@@ -299,10 +299,16 @@ const translations = {
     nextPage: 'Next',
     pageOf: 'Page',
     // Bulk download
-    downloadAllShia: 'Download All Shia Books',
-    downloadAllSunni: 'Download All Sunni Books',
-    downloadingAllBooks: 'Downloading all books...',
-    booksDownloaded: 'books downloaded',
+    downloadAllShia: 'Download All Shia',
+    downloadAllSunni: 'Download All Sunni',
+    downloadAllBooks: 'Download Everything',
+    downloadingAllBooks: 'Downloading...',
+    booksDownloaded: 'books done',
+    // Import search
+    searchBooksPlaceholder: 'Search books by name...',
+    booksFound: 'books found',
+    showingBooks: 'Showing',
+    ofBooks: 'of',
     // Font settings
     arabicFont: 'Arabic Font',
     fontAmiri: 'Amiri',
@@ -413,10 +419,16 @@ const translations = {
     nextPage: 'التالي',
     pageOf: 'صفحة',
     // Bulk download
-    downloadAllShia: 'تحميل جميع كتب الشيعة',
-    downloadAllSunni: 'تحميل جميع كتب أهل السنة',
-    downloadingAllBooks: 'جاري تحميل جميع الكتب...',
+    downloadAllShia: 'تحميل كتب الشيعة',
+    downloadAllSunni: 'تحميل كتب السنة',
+    downloadAllBooks: 'تحميل الكل',
+    downloadingAllBooks: 'جاري التحميل...',
     booksDownloaded: 'كتب تم تحميلها',
+    // Import search
+    searchBooksPlaceholder: 'البحث في الكتب...',
+    booksFound: 'كتاب',
+    showingBooks: 'عرض',
+    ofBooks: 'من',
     // Font settings
     arabicFont: 'الخط العربي',
     fontAmiri: 'أميري',
@@ -1172,7 +1184,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [serverUrl, setServerUrl] = useState('');
+  const [serverUrl, setServerUrl] = useState(GITHUB_DATA_URL);
   const [language, setLanguage] = useState<Language>(savedLanguage);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -1203,8 +1215,12 @@ function App() {
   const [showBookSelector, setShowBookSelector] = useState(false);
   // Import page sect filter
   const [importSectFilter, setImportSectFilter] = useState<SectFilter>('all');
+  // Import page search and pagination
+  const [importBookSearch, setImportBookSearch] = useState('');
+  const [importBooksPage, setImportBooksPage] = useState(1);
+  const IMPORT_BOOKS_PER_PAGE = 20;
   // Bulk download state
-  const [bulkDownloading, setBulkDownloading] = useState<'shia' | 'sunni' | null>(null);
+  const [bulkDownloading, setBulkDownloading] = useState<'shia' | 'sunni' | 'all' | null>(null);
   const [bulkDownloadProgress, setBulkDownloadProgress] = useState<{ current: number; total: number; booksCompleted: number } | null>(null);
   // Search pagination
   const [searchResultsPage, setSearchResultsPage] = useState(1);
@@ -1547,14 +1563,16 @@ function App() {
     setDownloadProgress(null);
   }
 
-  // Bulk download all books of a specific sect
-  async function downloadAllBySect(sect: 'shia' | 'sunni') {
+  // Bulk download all books of a specific sect or all books
+  async function downloadAllBySect(sect: 'shia' | 'sunni' | 'all') {
     if (bulkDownloading) return;
 
-    // Filter books by sect
-    const booksToDownload = availableBooks.filter(book => getBookSect(book.bookId) === sect);
+    // Filter books by sect or get all
+    const booksToDownload = sect === 'all'
+      ? availableBooks
+      : availableBooks.filter(book => getBookSect(book.bookId) === sect);
     if (booksToDownload.length === 0) {
-      showToast(sect === 'shia' ? 'No Shia books available' : 'No Sunni books available');
+      showToast('No books available');
       return;
     }
 
@@ -2918,29 +2936,195 @@ function App() {
                     </div>
                   )}
 
-                  {/* Available books list - use grid on desktop */}
-                  <div style={responsiveStyles.availableBooksGrid}>
-                    {availableBooks.filter(book => {
-                      if (importSectFilter === 'all') return true;
-                      return getBookSect(book.bookId) === importSectFilter;
-                    }).map((book: AvailableBook) => (
-                      <div
-                        key={book.slug}
-                        style={{
-                          ...responsiveStyles.importBookCard,
-                          border: selectedImportBook?.slug === book.slug ? '2px solid var(--primary)' : '1px solid var(--border-light)',
-                        }}
-                        onClick={() => selectImportBook(book)}
-                      >
-                        <div style={{ fontWeight: 600, fontFamily: language === 'ar' ? arabicFontFamily : 'inherit', fontSize: '1.05rem' }}>
-                          {language === 'ar' ? (book.bookTitleAr || book.bookTitle) : (book.bookTitleEn || book.bookTitle)}
+                  {/* Search and Bulk Download Controls */}
+                  <div style={{ marginBottom: '20px' }}>
+                    {/* Search input */}
+                    <input
+                      style={{ ...styles.input, maxWidth: '400px', marginBottom: '16px' }}
+                      placeholder={t.searchBooksPlaceholder}
+                      value={importBookSearch}
+                      onChange={e => { setImportBookSearch(e.target.value); setImportBooksPage(1); }}
+                    />
+
+                    {/* Bulk Download Buttons */}
+                    {!bulkDownloading && !downloadingVolumes && (
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                        <button
+                          style={{
+                            padding: '10px 16px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: 'var(--primary)',
+                            color: 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                          onClick={() => downloadAllBySect('shia')}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                          </svg>
+                          {t.downloadAllShia}
+                        </button>
+                        <button
+                          style={{
+                            padding: '10px 16px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: '#3b82f6',
+                            color: 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                          onClick={() => downloadAllBySect('sunni')}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                          </svg>
+                          {t.downloadAllSunni}
+                        </button>
+                        <button
+                          style={{
+                            padding: '10px 16px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: '#8b5cf6',
+                            color: 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                          onClick={() => downloadAllBySect('all')}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                          </svg>
+                          {t.downloadAllBooks}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Bulk Download Progress */}
+                    {bulkDownloading && bulkDownloadProgress && (
+                      <div style={{ marginBottom: '16px', maxWidth: '500px' }}>
+                        <div style={{
+                          height: '8px',
+                          background: 'var(--border)',
+                          borderRadius: '4px',
+                          overflow: 'hidden',
+                          marginBottom: '8px',
+                        }}>
+                          <div style={{
+                            height: '100%',
+                            background: bulkDownloading === 'shia' ? 'var(--primary)' : bulkDownloading === 'sunni' ? '#3b82f6' : '#8b5cf6',
+                            width: `${(bulkDownloadProgress.current / bulkDownloadProgress.total) * 100}%`,
+                            transition: 'width 0.3s ease',
+                          }} />
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: language === 'ar' ? arabicFontFamily : 'inherit' }}>
-                          {book.total} {t.volumes} • {language === 'ar' ? (book.authorAr || book.author || '') : (book.authorEn || book.author || '')}
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                          {t.downloadingAllBooks} {bulkDownloadProgress.current} / {bulkDownloadProgress.total} ({bulkDownloadProgress.booksCompleted} {t.booksDownloaded})
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
+
+                  {/* Available books list - use grid on desktop with pagination */}
+                  {(() => {
+                    // Filter books by sect and search
+                    const filteredBooks = availableBooks.filter(book => {
+                      const sectMatch = importSectFilter === 'all' || getBookSect(book.bookId) === importSectFilter;
+                      if (!sectMatch) return false;
+                      if (!importBookSearch.trim()) return true;
+                      const searchLower = importBookSearch.toLowerCase();
+                      const titleMatch = (book.bookTitle || '').toLowerCase().includes(searchLower) ||
+                                         (book.bookTitleAr || '').includes(importBookSearch) ||
+                                         (book.bookTitleEn || '').toLowerCase().includes(searchLower);
+                      const authorMatch = (book.author || '').toLowerCase().includes(searchLower) ||
+                                          (book.authorAr || '').includes(importBookSearch) ||
+                                          (book.authorEn || '').toLowerCase().includes(searchLower);
+                      return titleMatch || authorMatch;
+                    });
+
+                    const totalPages = Math.ceil(filteredBooks.length / IMPORT_BOOKS_PER_PAGE);
+                    const startIdx = (importBooksPage - 1) * IMPORT_BOOKS_PER_PAGE;
+                    const paginatedBooks = filteredBooks.slice(startIdx, startIdx + IMPORT_BOOKS_PER_PAGE);
+
+                    return (
+                      <>
+                        {/* Results count */}
+                        <div style={{ marginBottom: '12px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                          {t.showingBooks} {startIdx + 1}-{Math.min(startIdx + IMPORT_BOOKS_PER_PAGE, filteredBooks.length)} {t.ofBooks} {filteredBooks.length} {t.booksFound}
+                        </div>
+
+                        {/* Book grid */}
+                        <div style={responsiveStyles.availableBooksGrid}>
+                          {paginatedBooks.map((book: AvailableBook) => (
+                            <div
+                              key={book.slug}
+                              style={{
+                                ...responsiveStyles.importBookCard,
+                                border: selectedImportBook?.slug === book.slug ? '2px solid var(--primary)' : '1px solid var(--border-light)',
+                              }}
+                              onClick={() => selectImportBook(book)}
+                            >
+                              <div style={{ fontWeight: 600, fontFamily: language === 'ar' ? arabicFontFamily : 'inherit', fontSize: '1.05rem' }}>
+                                {language === 'ar' ? (book.bookTitleAr || book.bookTitle) : (book.bookTitleEn || book.bookTitle)}
+                              </div>
+                              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: language === 'ar' ? arabicFontFamily : 'inherit' }}>
+                                {book.total} {t.volumes} • {language === 'ar' ? (book.authorAr || book.author || '') : (book.authorEn || book.author || '')}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '20px' }}>
+                            <button
+                              style={{
+                                ...styles.btn,
+                                ...styles.btnSecondary,
+                                width: 'auto',
+                                padding: '10px 20px',
+                                opacity: importBooksPage === 1 ? 0.5 : 1,
+                              }}
+                              onClick={() => setImportBooksPage(p => Math.max(1, p - 1))}
+                              disabled={importBooksPage === 1}
+                            >
+                              {t.previousPage}
+                            </button>
+                            <span style={{ color: 'var(--text-secondary)' }}>
+                              {t.pageOf} {importBooksPage} / {totalPages}
+                            </span>
+                            <button
+                              style={{
+                                ...styles.btn,
+                                ...styles.btnSecondary,
+                                width: 'auto',
+                                padding: '10px 20px',
+                                opacity: importBooksPage === totalPages ? 0.5 : 1,
+                              }}
+                              onClick={() => setImportBooksPage(p => Math.min(totalPages, p + 1))}
+                              disabled={importBooksPage === totalPages}
+                            >
+                              {t.nextPage}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Volume selection when a book is selected */}
                   {selectedImportBook && availableDownloads.length > 0 && (
@@ -3186,14 +3370,61 @@ function App() {
 
                     {/* Bulk Download Buttons */}
                     {!bulkDownloading && !downloadingVolumes && (
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            style={{
+                              flex: 1,
+                              padding: '10px 8px',
+                              borderRadius: '10px',
+                              border: 'none',
+                              background: 'var(--primary)',
+                              color: 'white',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                            }}
+                            onClick={() => downloadAllBySect('shia')}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                            </svg>
+                            {t.downloadAllShia}
+                          </button>
+                          <button
+                            style={{
+                              flex: 1,
+                              padding: '10px 8px',
+                              borderRadius: '10px',
+                              border: 'none',
+                              background: '#3b82f6',
+                              color: 'white',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                            }}
+                            onClick={() => downloadAllBySect('sunni')}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                            </svg>
+                            {t.downloadAllSunni}
+                          </button>
+                        </div>
                         <button
                           style={{
-                            flex: 1,
-                            padding: '12px',
+                            padding: '10px',
                             borderRadius: '10px',
                             border: 'none',
-                            background: 'var(--primary)',
+                            background: '#8b5cf6',
                             color: 'white',
                             cursor: 'pointer',
                             fontSize: '0.85rem',
@@ -3203,35 +3434,12 @@ function App() {
                             justifyContent: 'center',
                             gap: '6px',
                           }}
-                          onClick={() => downloadAllBySect('shia')}
+                          onClick={() => downloadAllBySect('all')}
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
                           </svg>
-                          {t.downloadAllShia}
-                        </button>
-                        <button
-                          style={{
-                            flex: 1,
-                            padding: '12px',
-                            borderRadius: '10px',
-                            border: 'none',
-                            background: '#3b82f6',
-                            color: 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                          }}
-                          onClick={() => downloadAllBySect('sunni')}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                          </svg>
-                          {t.downloadAllSunni}
+                          {t.downloadAllBooks}
                         </button>
                       </div>
                     )}
@@ -3248,7 +3456,7 @@ function App() {
                         }}>
                           <div style={{
                             height: '100%',
-                            background: bulkDownloading === 'shia' ? 'var(--primary)' : '#3b82f6',
+                            background: bulkDownloading === 'shia' ? 'var(--primary)' : bulkDownloading === 'sunni' ? '#3b82f6' : '#8b5cf6',
                             width: `${(bulkDownloadProgress.current / bulkDownloadProgress.total) * 100}%`,
                             transition: 'width 0.3s ease',
                           }} />
@@ -3261,63 +3469,133 @@ function App() {
                   </div>
                 )}
 
+                {/* Search input for books */}
+                {availableBooks.length > 1 && (
+                  <input
+                    style={{ ...styles.input, marginBottom: '12px' }}
+                    placeholder={t.searchBooksPlaceholder}
+                    value={importBookSearch}
+                    onChange={e => { setImportBookSearch(e.target.value); setImportBooksPage(1); }}
+                  />
+                )}
+
                 {/* Book Selector - show when multiple books available */}
                 {availableBooks.length > 1 && (
                   <div style={{ marginBottom: '16px' }}>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                      {language === 'ar' ? 'اختر الكتاب' : 'Select Book'}
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                    }}>
-                      {availableBooks.filter(book => {
-                        if (importSectFilter === 'all') return true;
-                        return getBookSect(book.bookId) === importSectFilter;
-                      }).map(book => (
-                        <div
-                          key={book.slug}
-                          onClick={() => selectImportBook(book)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            padding: '12px',
-                            background: selectedImportBook?.slug === book.slug ? 'var(--primary-50)' : 'var(--card)',
-                            border: `2px solid ${selectedImportBook?.slug === book.slug ? 'var(--primary)' : 'var(--border)'}`,
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                          }}
-                        >
+                    {(() => {
+                      // Filter books by sect and search
+                      const filteredBooks = availableBooks.filter(book => {
+                        const sectMatch = importSectFilter === 'all' || getBookSect(book.bookId) === importSectFilter;
+                        if (!sectMatch) return false;
+                        if (!importBookSearch.trim()) return true;
+                        const searchLower = importBookSearch.toLowerCase();
+                        const titleMatch = (book.bookTitle || '').toLowerCase().includes(searchLower) ||
+                                           (book.bookTitleAr || '').includes(importBookSearch) ||
+                                           (book.bookTitleEn || '').toLowerCase().includes(searchLower);
+                        const authorMatch = (book.author || '').toLowerCase().includes(searchLower) ||
+                                            (book.authorAr || '').includes(importBookSearch) ||
+                                            (book.authorEn || '').toLowerCase().includes(searchLower);
+                        return titleMatch || authorMatch;
+                      });
+
+                      const totalPages = Math.ceil(filteredBooks.length / IMPORT_BOOKS_PER_PAGE);
+                      const startIdx = (importBooksPage - 1) * IMPORT_BOOKS_PER_PAGE;
+                      const paginatedBooks = filteredBooks.slice(startIdx, startIdx + IMPORT_BOOKS_PER_PAGE);
+
+                      return (
+                        <>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                            {t.showingBooks} {startIdx + 1}-{Math.min(startIdx + IMPORT_BOOKS_PER_PAGE, filteredBooks.length)} {t.ofBooks} {filteredBooks.length}
+                          </div>
                           <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '8px',
-                            background: selectedImportBook?.slug === book.slug ? 'var(--primary)' : 'var(--border)',
                             display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            maxHeight: '250px',
+                            overflowY: 'auto',
                           }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={selectedImportBook?.slug === book.slug ? 'white' : 'var(--text-secondary)'} strokeWidth="2">
-                              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                            </svg>
+                            {paginatedBooks.map(book => (
+                              <div
+                                key={book.slug}
+                                onClick={() => selectImportBook(book)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  padding: '12px',
+                                  background: selectedImportBook?.slug === book.slug ? 'var(--primary-50)' : 'var(--card)',
+                                  border: `2px solid ${selectedImportBook?.slug === book.slug ? 'var(--primary)' : 'var(--border)'}`,
+                                  borderRadius: '10px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                }}
+                              >
+                                <div style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  borderRadius: '8px',
+                                  background: selectedImportBook?.slug === book.slug ? 'var(--primary)' : 'var(--border)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}>
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={selectedImportBook?.slug === book.slug ? 'white' : 'var(--text-secondary)'} strokeWidth="2">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                  </svg>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontWeight: 600, fontFamily: language === 'ar' ? arabicFontFamily : 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {language === 'ar' ? (book.bookTitleAr || book.bookTitle) : (book.bookTitleEn || book.bookTitle)}
+                                  </div>
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: language === 'ar' ? arabicFontFamily : 'inherit' }}>
+                                    {book.total} {t.volumes} • {language === 'ar' ? (book.authorAr || book.author || '') : (book.authorEn || book.author || '')}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, fontFamily: language === 'ar' ? arabicFontFamily : 'inherit' }}>
-                              {language === 'ar' ? (book.bookTitleAr || book.bookTitle) : (book.bookTitleEn || book.bookTitle)}
+
+                          {/* Pagination */}
+                          {totalPages > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
+                              <button
+                                style={{
+                                  ...styles.btn,
+                                  ...styles.btnSecondary,
+                                  width: 'auto',
+                                  padding: '8px 14px',
+                                  fontSize: '0.85rem',
+                                  opacity: importBooksPage === 1 ? 0.5 : 1,
+                                }}
+                                onClick={() => setImportBooksPage(p => Math.max(1, p - 1))}
+                                disabled={importBooksPage === 1}
+                              >
+                                {t.previousPage}
+                              </button>
+                              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                {importBooksPage}/{totalPages}
+                              </span>
+                              <button
+                                style={{
+                                  ...styles.btn,
+                                  ...styles.btnSecondary,
+                                  width: 'auto',
+                                  padding: '8px 14px',
+                                  fontSize: '0.85rem',
+                                  opacity: importBooksPage === totalPages ? 0.5 : 1,
+                                }}
+                                onClick={() => setImportBooksPage(p => Math.min(totalPages, p + 1))}
+                                disabled={importBooksPage === totalPages}
+                              >
+                                {t.nextPage}
+                              </button>
                             </div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: language === 'ar' ? arabicFontFamily : 'inherit' }}>
-                              {book.total} {t.volumes} • {language === 'ar' ? (book.authorAr || book.author || '') : (book.authorEn || book.author || '')}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
 
