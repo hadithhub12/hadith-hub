@@ -1343,8 +1343,10 @@ function App() {
 
         // GitHub format: transform to app's expected format
         if (isGitHub && data.books && data.baseUrl) {
-          // For GitHub LFS files, use media.githubusercontent.com instead of raw.githubusercontent.com
-          const lfsBaseUrl = data.baseUrl.replace('raw.githubusercontent.com', 'media.githubusercontent.com');
+          // For GitHub LFS files, use media.githubusercontent.com/media/ instead of raw.githubusercontent.com
+          // raw URL: https://raw.githubusercontent.com/user/repo/branch/path
+          // media URL: https://media.githubusercontent.com/media/user/repo/branch/path
+          const lfsBaseUrl = data.baseUrl.replace('raw.githubusercontent.com', 'media.githubusercontent.com/media');
 
           const transformedBooks: AvailableBook[] = data.books.map((book: {
             slug: string;
