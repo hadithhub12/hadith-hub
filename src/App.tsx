@@ -309,6 +309,7 @@ const translations = {
     booksFound: 'books found',
     showingBooks: 'Showing',
     ofBooks: 'of',
+    noResultsFound: 'No books found',
     // Font settings
     arabicFont: 'Arabic Font',
     fontAmiri: 'Amiri',
@@ -429,6 +430,7 @@ const translations = {
     booksFound: 'كتاب',
     showingBooks: 'عرض',
     ofBooks: 'من',
+    noResultsFound: 'لم يتم العثور على كتب',
     // Font settings
     arabicFont: 'الخط العربي',
     fontAmiri: 'أميري',
@@ -458,7 +460,7 @@ let db: IDBDatabase | null = null;
 let booksStore: Book[] = [];
 let volumesStore: VolumeInfo[] = [];
 let pagesStore: Page[] = [];
-let savedLanguage: Language = (localStorage.getItem('hadithHub_language') as Language) || 'ar';
+let savedLanguage: Language = (localStorage.getItem('hadithHub_language') as Language) || 'en';
 let savedTheme: Theme = (localStorage.getItem('hadithHub_theme') as Theme) || 'light';
 let savedArabicFont: ArabicFont = (localStorage.getItem('hadithHub_arabicFont') as ArabicFont) || 'amiri';
 let savedReadingMode: ReadingMode = (localStorage.getItem('hadithHub_readingMode') as ReadingMode) || 'pagination';
@@ -3043,20 +3045,24 @@ function App() {
                   {(() => {
                     // Filter books by sect and search
                     const filteredBooks = availableBooks.filter(book => {
-                      const sectMatch = importSectFilter === 'all' || getBookSect(book.bookId) === importSectFilter;
-                      if (!sectMatch) return false;
-                      if (!importBookSearch.trim()) return true;
-                      const searchLower = importBookSearch.toLowerCase();
-                      const titleMatch = (book.bookTitle || '').toLowerCase().includes(searchLower) ||
-                                         (book.bookTitleAr || '').includes(importBookSearch) ||
-                                         (book.bookTitleEn || '').toLowerCase().includes(searchLower);
-                      const authorMatch = (book.author || '').toLowerCase().includes(searchLower) ||
-                                          (book.authorAr || '').includes(importBookSearch) ||
-                                          (book.authorEn || '').toLowerCase().includes(searchLower);
-                      return titleMatch || authorMatch;
+                      try {
+                        const sectMatch = importSectFilter === 'all' || getBookSect(book.bookId || '') === importSectFilter;
+                        if (!sectMatch) return false;
+                        if (!importBookSearch.trim()) return true;
+                        const searchLower = importBookSearch.toLowerCase();
+                        const titleMatch = (book.bookTitle || '').toLowerCase().includes(searchLower) ||
+                                           (book.bookTitleAr || '').includes(importBookSearch) ||
+                                           (book.bookTitleEn || '').toLowerCase().includes(searchLower);
+                        const authorMatch = (book.author || '').toLowerCase().includes(searchLower) ||
+                                            (book.authorAr || '').includes(importBookSearch) ||
+                                            (book.authorEn || '').toLowerCase().includes(searchLower);
+                        return titleMatch || authorMatch;
+                      } catch {
+                        return false;
+                      }
                     });
 
-                    const totalPages = Math.ceil(filteredBooks.length / IMPORT_BOOKS_PER_PAGE);
+                    const totalPages = Math.max(1, Math.ceil(filteredBooks.length / IMPORT_BOOKS_PER_PAGE));
                     const startIdx = (importBooksPage - 1) * IMPORT_BOOKS_PER_PAGE;
                     const paginatedBooks = filteredBooks.slice(startIdx, startIdx + IMPORT_BOOKS_PER_PAGE);
 
@@ -3064,7 +3070,10 @@ function App() {
                       <>
                         {/* Results count */}
                         <div style={{ marginBottom: '12px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                          {t.showingBooks} {startIdx + 1}-{Math.min(startIdx + IMPORT_BOOKS_PER_PAGE, filteredBooks.length)} {t.ofBooks} {filteredBooks.length} {t.booksFound}
+                          {filteredBooks.length > 0
+                            ? `${t.showingBooks} ${startIdx + 1}-${Math.min(startIdx + IMPORT_BOOKS_PER_PAGE, filteredBooks.length)} ${t.ofBooks} ${filteredBooks.length} ${t.booksFound}`
+                            : t.noResultsFound || 'No books found'
+                          }
                         </div>
 
                         {/* Book grid */}
@@ -3485,27 +3494,34 @@ function App() {
                     {(() => {
                       // Filter books by sect and search
                       const filteredBooks = availableBooks.filter(book => {
-                        const sectMatch = importSectFilter === 'all' || getBookSect(book.bookId) === importSectFilter;
-                        if (!sectMatch) return false;
-                        if (!importBookSearch.trim()) return true;
-                        const searchLower = importBookSearch.toLowerCase();
-                        const titleMatch = (book.bookTitle || '').toLowerCase().includes(searchLower) ||
-                                           (book.bookTitleAr || '').includes(importBookSearch) ||
-                                           (book.bookTitleEn || '').toLowerCase().includes(searchLower);
-                        const authorMatch = (book.author || '').toLowerCase().includes(searchLower) ||
-                                            (book.authorAr || '').includes(importBookSearch) ||
-                                            (book.authorEn || '').toLowerCase().includes(searchLower);
-                        return titleMatch || authorMatch;
+                        try {
+                          const sectMatch = importSectFilter === 'all' || getBookSect(book.bookId || '') === importSectFilter;
+                          if (!sectMatch) return false;
+                          if (!importBookSearch.trim()) return true;
+                          const searchLower = importBookSearch.toLowerCase();
+                          const titleMatch = (book.bookTitle || '').toLowerCase().includes(searchLower) ||
+                                             (book.bookTitleAr || '').includes(importBookSearch) ||
+                                             (book.bookTitleEn || '').toLowerCase().includes(searchLower);
+                          const authorMatch = (book.author || '').toLowerCase().includes(searchLower) ||
+                                              (book.authorAr || '').includes(importBookSearch) ||
+                                              (book.authorEn || '').toLowerCase().includes(searchLower);
+                          return titleMatch || authorMatch;
+                        } catch {
+                          return false;
+                        }
                       });
 
-                      const totalPages = Math.ceil(filteredBooks.length / IMPORT_BOOKS_PER_PAGE);
+                      const totalPages = Math.max(1, Math.ceil(filteredBooks.length / IMPORT_BOOKS_PER_PAGE));
                       const startIdx = (importBooksPage - 1) * IMPORT_BOOKS_PER_PAGE;
                       const paginatedBooks = filteredBooks.slice(startIdx, startIdx + IMPORT_BOOKS_PER_PAGE);
 
                       return (
                         <>
                           <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                            {t.showingBooks} {startIdx + 1}-{Math.min(startIdx + IMPORT_BOOKS_PER_PAGE, filteredBooks.length)} {t.ofBooks} {filteredBooks.length}
+                            {filteredBooks.length > 0
+                              ? `${t.showingBooks} ${startIdx + 1}-${Math.min(startIdx + IMPORT_BOOKS_PER_PAGE, filteredBooks.length)} ${t.ofBooks} ${filteredBooks.length}`
+                              : t.noResultsFound || 'No books found'
+                            }
                           </div>
                           <div style={{
                             display: 'flex',
