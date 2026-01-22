@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#047857"/>
+  <g transform="translate(256, 256)">
+    <!-- Book icon -->
+    <path d="M-120 -80 L-120 100 Q-120 120 -100 120 L100 120 Q120 120 120 100 L120 -80 Q120 -100 100 -100 L-100 -100 Q-120 -100 -120 -80 Z" fill="white" opacity="0.95"/>
+    <!-- Book spine -->
+    <path d="M0 -100 L0 120" stroke="#047857" stroke-width="4" opacity="0.3"/>
+    <!-- Page lines -->
+    <path d="M-80 -60 L-20 -60 M-80 -30 L-20 -30 M-80 0 L-20 0 M-80 30 L-20 30 M-80 60 L-20 60" stroke="#047857" stroke-width="6" stroke-linecap="round" opacity="0.4"/>
+    <path d="M20 -60 L80 -60 M20 -30 L80 -30 M20 0 L80 0 M20 30 L80 30 M20 60 L80 60" stroke="#047857" stroke-width="6" stroke-linecap="round" opacity="0.4"/>
+  </g>
+  <!-- Arabic letter Ha (ح) stylized -->
+  <text x="256" y="300" font-family="Arial" font-size="120" font-weight="bold" fill="#047857" text-anchor="middle" opacity="0.6">H</text>
+</svg>
