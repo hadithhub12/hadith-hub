@@ -542,8 +542,19 @@ async function loadFromDB(): Promise<void> {
 
   try {
     booksStore = await loadStore<Book>('books');
-    volumesStore = await loadStore<VolumeInfo>('volumes');
-    pagesStore = await loadStore<Page>('pages');
+    const rawVolumes = await loadStore<VolumeInfo>('volumes');
+    const rawPages = await loadStore<Page>('pages');
+
+    // Migrate: convert string volumes to numbers (manifest may have stored "001" as string)
+    volumesStore = rawVolumes.map(v => ({
+      ...v,
+      volume: typeof v.volume === 'string' ? parseInt(v.volume as unknown as string, 10) : v.volume
+    }));
+    pagesStore = rawPages.map(p => ({
+      ...p,
+      volume: typeof p.volume === 'string' ? parseInt(p.volume as unknown as string, 10) : p.volume
+    }));
+
     console.log(`Loaded from IndexedDB: ${booksStore.length} books, ${volumesStore.length} volumes, ${pagesStore.length} pages`);
   } catch (err) {
     console.error('Failed to load from IndexedDB:', err);
@@ -1544,31 +1555,33 @@ function App() {
 
         // Import pages
         for (const volInfo of manifest.volumes) {
+          // Convert volume to number (manifest may have string like "001")
+          const volumeNum = typeof volInfo.volume === 'string' ? parseInt(volInfo.volume, 10) : volInfo.volume;
           const pages: Page[] = [];
           for (let p = 1; p <= volInfo.totalPages; p++) {
             const pageFile = zip.file(`volumes/${volInfo.volume}/${p}.txt`);
             if (pageFile) {
               const text = await pageFile.async('text');
-              pages.push({ bookId: manifest.id, volume: volInfo.volume, page: p, text });
+              pages.push({ bookId: manifest.id, volume: volumeNum, page: p, text });
             }
           }
           // Remove existing pages for this volume from memory
-          pagesStore = pagesStore.filter(pg => !(pg.bookId === manifest.id && pg.volume === volInfo.volume));
+          pagesStore = pagesStore.filter(pg => !(pg.bookId === manifest.id && pg.volume === volumeNum));
           pagesStore = [...pagesStore, ...pages];
 
           // Remove existing pages from IndexedDB and save new ones
-          await deletePagesFromDB(manifest.id, volInfo.volume);
+          await deletePagesFromDB(manifest.id, volumeNum);
           await savePagesToDB(pages);
 
           // Update volumes store
-          volumesStore = volumesStore.filter(v => !(v.bookId === manifest.id && v.volume === volInfo.volume));
-          const newVolume = { bookId: manifest.id, volume: volInfo.volume, totalPages: volInfo.totalPages, importedAt: Date.now() };
+          volumesStore = volumesStore.filter(v => !(v.bookId === manifest.id && v.volume === volumeNum));
+          const newVolume = { bookId: manifest.id, volume: volumeNum, totalPages: volInfo.totalPages, importedAt: Date.now() };
           volumesStore.push(newVolume);
           await saveVolumeToDB(newVolume);
         }
 
         // Add/update book (for translations, this creates a separate _en book entry)
-        const maxVolume = Math.max(...manifest.volumes.map((v: { volume: number }) => v.volume));
+        const maxVolume = Math.max(...manifest.volumes.map((v: { volume: number | string }) => typeof v.volume === 'string' ? parseInt(v.volume, 10) : v.volume));
         const existingBook = booksStore.find(b => b.id === manifest.id);
         if (existingBook) {
           existingBook.volumes = Math.max(existingBook.volumes, maxVolume);
@@ -1645,31 +1658,33 @@ function App() {
 
           // Import pages
           for (const volInfo of manifest.volumes) {
+            // Convert volume to number (manifest may have string like "001")
+            const volumeNum = typeof volInfo.volume === 'string' ? parseInt(volInfo.volume, 10) : volInfo.volume;
             const pages: Page[] = [];
             for (let p = 1; p <= volInfo.totalPages; p++) {
               const pageFile = zip.file(`volumes/${volInfo.volume}/${p}.txt`);
               if (pageFile) {
                 const text = await pageFile.async('text');
-                pages.push({ bookId: manifest.id, volume: volInfo.volume, page: p, text });
+                pages.push({ bookId: manifest.id, volume: volumeNum, page: p, text });
               }
             }
             // Remove existing pages for this volume from memory
-            pagesStore = pagesStore.filter(pg => !(pg.bookId === manifest.id && pg.volume === volInfo.volume));
+            pagesStore = pagesStore.filter(pg => !(pg.bookId === manifest.id && pg.volume === volumeNum));
             pagesStore = [...pagesStore, ...pages];
 
             // Remove existing pages from IndexedDB and save new ones
-            await deletePagesFromDB(manifest.id, volInfo.volume);
+            await deletePagesFromDB(manifest.id, volumeNum);
             await savePagesToDB(pages);
 
             // Update volumes store
-            volumesStore = volumesStore.filter(v => !(v.bookId === manifest.id && v.volume === volInfo.volume));
-            const newVolume = { bookId: manifest.id, volume: volInfo.volume, totalPages: volInfo.totalPages, importedAt: Date.now() };
+            volumesStore = volumesStore.filter(v => !(v.bookId === manifest.id && v.volume === volumeNum));
+            const newVolume = { bookId: manifest.id, volume: volumeNum, totalPages: volInfo.totalPages, importedAt: Date.now() };
             volumesStore.push(newVolume);
             await saveVolumeToDB(newVolume);
           }
 
           // Add/update book
-          const maxVolume = Math.max(...manifest.volumes.map((v: { volume: number }) => v.volume));
+          const maxVolume = Math.max(...manifest.volumes.map((v: { volume: number | string }) => typeof v.volume === 'string' ? parseInt(v.volume, 10) : v.volume));
           const existingBook = booksStore.find(b => b.id === manifest.id);
           if (existingBook) {
             existingBook.volumes = Math.max(existingBook.volumes, maxVolume);
@@ -1718,29 +1733,31 @@ function App() {
 
       // Import pages
       for (const volInfo of manifest.volumes) {
+        // Convert volume to number (manifest may have string like "001")
+        const volumeNum = typeof volInfo.volume === 'string' ? parseInt(volInfo.volume, 10) : volInfo.volume;
         const pages: Page[] = [];
         for (let i = 1; i <= volInfo.totalPages; i++) {
           const pageFile = zip.file(`volumes/${volInfo.volume}/${i}.txt`);
           if (pageFile) {
             const text = await pageFile.async('text');
-            pages.push({ bookId: manifest.id, volume: volInfo.volume, page: i, text });
+            pages.push({ bookId: manifest.id, volume: volumeNum, page: i, text });
           }
         }
         // Update memory store
-        pagesStore = [...pagesStore.filter(pg => !(pg.bookId === manifest.id && pg.volume === volInfo.volume)), ...pages];
-        volumesStore = volumesStore.filter(v => !(v.bookId === manifest.id && v.volume === volInfo.volume));
-        const newVolume = { bookId: manifest.id, volume: volInfo.volume, totalPages: volInfo.totalPages, importedAt: Date.now() };
+        pagesStore = [...pagesStore.filter(pg => !(pg.bookId === manifest.id && pg.volume === volumeNum)), ...pages];
+        volumesStore = volumesStore.filter(v => !(v.bookId === manifest.id && v.volume === volumeNum));
+        const newVolume = { bookId: manifest.id, volume: volumeNum, totalPages: volInfo.totalPages, importedAt: Date.now() };
         volumesStore.push(newVolume);
 
         // Persist to IndexedDB
-        await deletePagesFromDB(manifest.id, volInfo.volume);
+        await deletePagesFromDB(manifest.id, volumeNum);
         await savePagesToDB(pages);
         await saveVolumeToDB(newVolume);
       }
 
       // Add book - track actual volume numbers, not count
       const existingBook = booksStore.find(b => b.id === manifest.id);
-      const maxVolume = Math.max(...manifest.volumes.map((v: { volume: number }) => v.volume));
+      const maxVolume = Math.max(...manifest.volumes.map((v: { volume: number | string }) => typeof v.volume === 'string' ? parseInt(v.volume, 10) : v.volume));
       if (existingBook) {
         existingBook.volumes = Math.max(existingBook.volumes, maxVolume);
         await saveBookToDB(existingBook);
