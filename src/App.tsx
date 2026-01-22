@@ -3317,13 +3317,31 @@ function App() {
                       )}
 
                       {/* Volume selection */}
-                      <div style={{ marginBottom: '16px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <div style={{ marginBottom: '16px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <button style={{ ...styles.btn, ...styles.btnSecondary, width: 'auto', padding: '10px 16px' }} onClick={selectAllVolumes}>
                           {t.selectAll}
                         </button>
                         <button style={{ ...styles.btn, ...styles.btnSecondary, width: 'auto', padding: '10px 16px' }} onClick={deselectAllVolumes}>
                           {t.deselectAll}
                         </button>
+                        {selectedVolumes.size > 0 && !downloadingVolumes && (
+                          <button
+                            style={{
+                              ...styles.btn,
+                              width: 'auto',
+                              padding: '10px 16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                            onClick={downloadSelectedVolumes}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                            </svg>
+                            {t.downloadSelected} ({selectedVolumes.size})
+                          </button>
+                        )}
                         <span style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                           {selectedVolumes.size} {t.volumesSelected}
                         </span>
@@ -3348,21 +3366,17 @@ function App() {
                         ))}
                       </div>
 
-                      {/* Download button */}
-                      <button
-                        style={{ ...styles.btn, maxWidth: '300px', ...(downloadingVolumes || selectedVolumes.size === 0 ? { opacity: 0.6 } : {}) }}
-                        onClick={downloadSelectedVolumes}
-                        disabled={downloadingVolumes || selectedVolumes.size === 0}
-                      >
-                        {downloadingVolumes ? (
-                          <>
-                            <div className="spinner spinner-sm" />
-                            {downloadProgress ? `${downloadProgress.current}/${downloadProgress.total}` : t.downloading}
-                          </>
-                        ) : (
-                          t.downloadSelected
-                        )}
-                      </button>
+                      {/* Download progress */}
+                      {downloadingVolumes && (
+                        <div style={{ maxWidth: '300px' }}>
+                          <div style={styles.progressBar}>
+                            <div style={{ ...styles.progressFill, width: `${(downloadProgress?.current || 0) / (downloadProgress?.total || 1) * 100}%` }} />
+                          </div>
+                          <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '8px' }}>
+                            {t.downloading} {downloadProgress?.current} / {downloadProgress?.total}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -3920,24 +3934,45 @@ function App() {
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    {selectedVolumes.size} {t.volumesSelected}
-                  </span>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      style={{ ...styles.btn, padding: '8px 12px', fontSize: '0.85rem', width: 'auto' }}
-                      onClick={selectAllVolumes}
-                    >
-                      {t.selectAll}
-                    </button>
-                    <button
-                      style={{ ...styles.btn, ...styles.btnSecondary, padding: '8px 12px', fontSize: '0.85rem', width: 'auto' }}
-                      onClick={deselectAllVolumes}
-                    >
-                      {t.deselectAll}
-                    </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                      {selectedVolumes.size} {t.volumesSelected}
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        style={{ ...styles.btn, padding: '8px 12px', fontSize: '0.85rem', width: 'auto' }}
+                        onClick={selectAllVolumes}
+                      >
+                        {t.selectAll}
+                      </button>
+                      <button
+                        style={{ ...styles.btn, ...styles.btnSecondary, padding: '8px 12px', fontSize: '0.85rem', width: 'auto' }}
+                        onClick={deselectAllVolumes}
+                      >
+                        {t.deselectAll}
+                      </button>
+                    </div>
                   </div>
+                  {/* Download Selected button - visible when volumes are selected */}
+                  {selectedVolumes.size > 0 && !downloadingVolumes && (
+                    <button
+                      style={{
+                        ...styles.btn,
+                        background: importMode === 'english' ? '#3b82f6' : 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                      }}
+                      onClick={downloadSelectedVolumes}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                      </svg>
+                      {t.downloadSelected} ({selectedVolumes.size})
+                    </button>
+                  )}
                 </div>
 
                 {/* Volume list based on import mode */}
@@ -4027,7 +4062,7 @@ function App() {
                   </div>
                 )}
 
-                {downloadingVolumes ? (
+                {downloadingVolumes && (
                   <div>
                     <div style={styles.progressBar}>
                       <div style={{ ...styles.progressFill, width: `${(downloadProgress?.current || 0) / (downloadProgress?.total || 1) * 100}%`, background: importMode === 'english' ? '#3b82f6' : undefined }} />
@@ -4036,14 +4071,6 @@ function App() {
                       {t.downloading} {downloadProgress?.current} / {downloadProgress?.total}
                     </div>
                   </div>
-                ) : (
-                  <button
-                    style={{ ...styles.btn, opacity: selectedVolumes.size > 0 ? 1 : 0.5, background: importMode === 'english' ? '#3b82f6' : undefined }}
-                    onClick={downloadSelectedVolumes}
-                    disabled={selectedVolumes.size === 0}
-                  >
-                    {t.downloadSelected} ({selectedVolumes.size})
-                  </button>
                 )}
               </div>
             )}
