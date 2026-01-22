@@ -1544,15 +1544,33 @@ function App() {
       try {
         // Download the ZIP file (downloadUrl may be absolute for GitHub or relative for custom server)
         const downloadUrl = dl.downloadUrl.startsWith('http') ? dl.downloadUrl : `${serverUrl}${dl.downloadUrl}`;
+        console.log('Downloading from:', downloadUrl);
         const res = await fetch(downloadUrl);
-        if (!res.ok) continue;
+        if (!res.ok) {
+          console.error('Download failed:', res.status, res.statusText);
+          continue;
+        }
 
         const blob = await res.blob();
+        console.log('Downloaded blob size:', blob.size);
+
+        // Check if we got an LFS pointer instead of actual file
+        if (blob.size < 200) {
+          const text = await blob.text();
+          if (text.includes('version https://git-lfs.github.com')) {
+            console.error('Got LFS pointer instead of actual file. URL needs to use media.githubusercontent.com');
+            continue;
+          }
+        }
+
         const JSZip = (await import('jszip')).default;
         const zip = await JSZip.loadAsync(blob);
 
         const manifestFile = zip.file('manifest.json');
-        if (!manifestFile) continue;
+        if (!manifestFile) {
+          console.error('No manifest.json found in ZIP');
+          continue;
+        }
 
         const manifest = JSON.parse(await manifestFile.async('text'));
 
@@ -1589,10 +1607,12 @@ function App() {
         if (existingBook) {
           existingBook.volumes = Math.max(existingBook.volumes, maxVolume);
           await saveBookToDB(existingBook);
+          console.log('Updated existing book:', existingBook.id, existingBook.title);
         } else {
           const newBook = { id: manifest.id, title: manifest.title, author: manifest.author, volumes: maxVolume, importedAt: Date.now() };
           booksStore.push(newBook);
           await saveBookToDB(newBook);
+          console.log('Saved new book:', newBook.id, newBook.title);
         }
 
         successCount++;
@@ -1601,6 +1621,7 @@ function App() {
       }
     }
 
+    console.log('Download complete. booksStore now has:', booksStore.length, 'books');
     setBooks([...booksStore]);
     setSelectedVolumes(new Set());
     setDataVersion(v => v + 1); // Trigger re-render to update translation availability
@@ -1639,19 +1660,35 @@ function App() {
         try {
           // Download the ZIP file (downloadUrl may be absolute for GitHub or relative for custom server)
           const downloadUrl = dl.downloadUrl.startsWith('http') ? dl.downloadUrl : `${serverUrl}${dl.downloadUrl}`;
+          console.log('Bulk download from:', downloadUrl);
           const res = await fetch(downloadUrl);
           if (!res.ok) {
+            console.error('Bulk download failed:', res.status, res.statusText);
             completedVolumes++;
             setBulkDownloadProgress({ current: completedVolumes, total: totalVolumes, booksCompleted });
             continue;
           }
 
           const blob = await res.blob();
+          console.log('Bulk downloaded blob size:', blob.size);
+
+          // Check if we got an LFS pointer instead of actual file
+          if (blob.size < 200) {
+            const text = await blob.text();
+            if (text.includes('version https://git-lfs.github.com')) {
+              console.error('Got LFS pointer instead of actual file. URL needs to use media.githubusercontent.com');
+              completedVolumes++;
+              setBulkDownloadProgress({ current: completedVolumes, total: totalVolumes, booksCompleted });
+              continue;
+            }
+          }
+
           const JSZip = (await import('jszip')).default;
           const zip = await JSZip.loadAsync(blob);
 
           const manifestFile = zip.file('manifest.json');
           if (!manifestFile) {
+            console.error('No manifest.json found in ZIP');
             completedVolumes++;
             setBulkDownloadProgress({ current: completedVolumes, total: totalVolumes, booksCompleted });
             continue;
