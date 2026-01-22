@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useMemo, type CSSProperties } from 'react'
 import './index.css';
 import { getBookDisplayName, hasBookMetadata } from './bookMetadata';
 
+// GitHub-hosted data URL (default source)
+const GITHUB_DATA_URL = 'https://raw.githubusercontent.com/hadithhub12/hadith-data/main';
+
 // Responsive breakpoints
 const BREAKPOINTS = {
   tablet: 768,
@@ -217,7 +220,7 @@ const translations = {
     importDownload: 'Import / Download',
     importFromZip: 'Import from ZIP file',
     tapToSelectZip: 'Tap to select a ZIP file',
-    serverUrl: 'Server URL',
+    serverUrl: 'Custom Server URL (optional)',
     downloadSuccess: 'Download successful',
     downloadFailed: 'Download failed',
     importSuccess: 'Import successful',
@@ -331,7 +334,7 @@ const translations = {
     importDownload: 'استيراد / تحميل',
     importFromZip: 'استيراد من ملف ZIP',
     tapToSelectZip: 'اضغط لاختيار ملف ZIP',
-    serverUrl: 'عنوان الخادم',
+    serverUrl: 'عنوان خادم مخصص (اختياري)',
     downloadSuccess: 'تم التحميل بنجاح',
     downloadFailed: 'فشل التحميل',
     importSuccess: 'تم الاستيراد بنجاح',
@@ -1256,6 +1259,14 @@ function App() {
     });
   }, []);
 
+  // Auto-fetch available books from GitHub when import view is opened
+  useEffect(() => {
+    if (view === 'import' && availableBooks.length === 0 && !loadingDownloads) {
+      fetchAvailableDownloads();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 2500);
@@ -1264,12 +1275,105 @@ function App() {
   async function fetchAvailableDownloads() {
     setLoadingDownloads(true);
     try {
-      const res = await fetch(`${serverUrl}/downloads`);
+      // Determine the data source URL
+      const dataUrl = serverUrl.trim() || GITHUB_DATA_URL;
+      const isGitHub = dataUrl.includes('raw.githubusercontent.com');
+
+      // For GitHub, fetch books.json; for custom server, fetch /downloads
+      const endpoint = isGitHub ? `${dataUrl}/books.json` : `${dataUrl}/downloads`;
+      const res = await fetch(endpoint);
+
       if (res.ok) {
         const data = await res.json();
 
-        // Check if multi-book format (has 'books' array) or single-book format (has 'downloads' array)
-        if (data.books && Array.isArray(data.books)) {
+        // GitHub format: transform to app's expected format
+        if (isGitHub && data.books && data.baseUrl) {
+          const transformedBooks: AvailableBook[] = data.books.map((book: {
+            slug: string;
+            id: string;
+            titleAr: string;
+            titleEn: string;
+            authorAr: string;
+            authorEn: string;
+            sect: string;
+            volumes: Array<{ volume: number; filename: string; size: number; sizeFormatted: string }>;
+            totalVolumes: number;
+          }) => ({
+            slug: book.slug,
+            bookId: book.id,
+            bookTitle: book.titleAr,
+            bookTitleAr: book.titleAr,
+            bookTitleEn: book.titleEn,
+            author: book.authorAr,
+            authorAr: book.authorAr,
+            authorEn: book.authorEn,
+            sect: book.sect,
+            total: book.totalVolumes,
+            downloads: book.volumes.map(v => ({
+              filename: v.filename,
+              volume: v.volume,
+              size: v.size,
+              sizeFormatted: v.sizeFormatted,
+              downloadUrl: `${data.baseUrl}/books/${v.filename}`,
+              bookId: book.id,
+              bookTitle: book.titleAr,
+              language: 'ar'
+            }))
+          }));
+
+          const transformedTranslations: AvailableBook[] = (data.translations || []).map((book: {
+            slug: string;
+            id: string;
+            sourceId: string;
+            titleAr: string;
+            titleEn: string;
+            authorAr: string;
+            authorEn: string;
+            sect: string;
+            volumes: Array<{ volume: number; filename: string; size: number; sizeFormatted: string }>;
+            totalVolumes: number;
+          }) => ({
+            slug: book.slug,
+            bookId: book.id,
+            sourceBookId: book.sourceId,
+            bookTitle: book.titleEn,
+            bookTitleAr: book.titleAr,
+            bookTitleEn: book.titleEn,
+            author: book.authorEn || book.authorAr,
+            authorAr: book.authorAr,
+            authorEn: book.authorEn,
+            sect: book.sect,
+            total: book.totalVolumes,
+            downloads: book.volumes.map(v => ({
+              filename: v.filename,
+              volume: v.volume,
+              size: v.size,
+              sizeFormatted: v.sizeFormatted,
+              downloadUrl: `${data.baseUrl}/translations/${v.filename}`,
+              bookId: book.id,
+              bookTitle: book.titleEn,
+              language: 'en'
+            }))
+          }));
+
+          setAvailableBooks(transformedBooks);
+          setAvailableTranslationBooks(transformedTranslations);
+
+          // Auto-select first book if available
+          if (transformedBooks.length > 0 && !selectedImportBook) {
+            const firstBook = transformedBooks[0];
+            setSelectedImportBook(firstBook);
+            setAvailableDownloads(firstBook.downloads || []);
+
+            // Find matching translations
+            const matchingTranslations = transformedTranslations.find(
+              t => t.sourceBookId === firstBook.bookId || t.slug === firstBook.slug
+            );
+            setAvailableTranslations(matchingTranslations?.downloads || []);
+          }
+        }
+        // Server format: check if multi-book or single-book
+        else if (data.books && Array.isArray(data.books)) {
           // Multi-book format
           setAvailableBooks(data.books);
           setAvailableTranslationBooks(data.translations || []);
@@ -1378,8 +1482,9 @@ function App() {
       setDownloadProgress({ current: i + 1, total: volumesToDownload.length });
 
       try {
-        // Download the ZIP file
-        const res = await fetch(`${serverUrl}${dl.downloadUrl}`);
+        // Download the ZIP file (downloadUrl may be absolute for GitHub or relative for custom server)
+        const downloadUrl = dl.downloadUrl.startsWith('http') ? dl.downloadUrl : `${serverUrl}${dl.downloadUrl}`;
+        const res = await fetch(downloadUrl);
         if (!res.ok) continue;
 
         const blob = await res.blob();
@@ -1468,8 +1573,9 @@ function App() {
     for (const book of booksToDownload) {
       for (const dl of book.downloads) {
         try {
-          // Download the ZIP file
-          const res = await fetch(`${serverUrl}${dl.downloadUrl}`);
+          // Download the ZIP file (downloadUrl may be absolute for GitHub or relative for custom server)
+          const downloadUrl = dl.downloadUrl.startsWith('http') ? dl.downloadUrl : `${serverUrl}${dl.downloadUrl}`;
+          const res = await fetch(downloadUrl);
           if (!res.ok) {
             completedVolumes++;
             setBulkDownloadProgress({ current: completedVolumes, total: totalVolumes, booksCompleted });
