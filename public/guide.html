@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hadith Hub - User Guide</title>
+    <style>
+        :root {
+            --primary: #047857;
+            --primary-light: #10b981;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            border-radius: 16px;
+            margin-bottom: 32px;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            opacity: 0.9;
+        }
+
+        .toc {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .toc h2 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            color: var(--primary);
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            margin: 8px 0;
+        }
+
+        .toc a {
+            color: var(--text);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toc a:hover {
+            color: var(--primary);
+        }
+
+        .toc .number {
+            background: var(--primary);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        section {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: var(--primary);
+            font-size: 1.4rem;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            margin: 20px 0 12px 0;
+            color: var(--text);
+        }
+
+        p {
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        .step {
+            display: flex;
+            gap: 16px;
+            margin: 16px 0;
+            padding: 16px;
+            background: var(--bg);
+            border-radius: 8px;
+        }
+
+        .step-number {
+            background: var(--primary);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content strong {
+            color: var(--text);
+        }
+
+        .note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 16px 0;
+        }
+
+        .note strong {
+            color: #92400e;
+        }
+
+        .tip {
+            background: #dcfce7;
+            border-left: 4px solid var(--primary);
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 16px 0;
+        }
+
+        .tip strong {
+            color: var(--primary);
+        }
+
+        .screenshot-placeholder {
+            background: var(--border);
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            color: var(--text-secondary);
+            margin: 16px 0;
+            border: 2px dashed #cbd5e1;
+        }
+
+        .btn-link {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 8px 0;
+        }
+
+        .btn-link:hover {
+            background: var(--primary-light);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .feature-card {
+            background: var(--bg);
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .feature-card .icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .feature-card h4 {
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .feature-card p {
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 32px;
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--primary);
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            header {
+                padding: 24px 16px;
+            }
+
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            section {
+                padding: 16px;
+            }
+
+            .step {
+                flex-direction: column;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Hadith Hub</h1>
+            <p>Your Offline Islamic Library - User Guide</p>
+        </header>
+
+        <nav class="toc">
+            <h2>Table of Contents</h2>
+            <ul>
+                <li><a href="#getting-started"><span class="number">1</span> Getting Started</a></li>
+                <li><a href="#ios-install"><span class="number">2</span> Install on iPhone/iPad</a></li>
+                <li><a href="#android-install"><span class="number">3</span> Install on Android</a></li>
+                <li><a href="#importing"><span class="number">4</span> Importing Books</a></li>
+                <li><a href="#reading"><span class="number">5</span> Reading Books</a></li>
+                <li><a href="#settings"><span class="number">6</span> Settings</a></li>
+            </ul>
+        </nav>
+
+        <section id="getting-started">
+            <h2>1. Getting Started</h2>
+            <p>Hadith Hub is a Progressive Web App (PWA) that lets you read Islamic hadith books offline. No app store download required!</p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="icon">📚</div>
+                    <h4>600+ Books</h4>
+                    <p>Extensive hadith collection</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">📱</div>
+                    <h4>Works Offline</h4>
+                    <p>Read without internet</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🌙</div>
+                    <h4>Dark Mode</h4>
+                    <p>Easy on the eyes</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🔤</div>
+                    <h4>Multiple Fonts</h4>
+                    <p>Choose your preferred style</p>
+                </div>
+            </div>
+
+            <p style="text-align: center; margin-top: 24px;">
+                <a href="./" class="btn-link">Open Hadith Hub</a>
+            </p>
+        </section>
+
+        <section id="ios-install">
+            <h2>2. Install on iPhone/iPad</h2>
+            <p>Add Hadith Hub to your iOS home screen for quick access and a native app experience.</p>
+
+            <div class="note">
+                <strong>Important:</strong> You must use Safari browser on iOS. Other browsers don't support PWA installation.
+            </div>
+
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <strong>Open Safari</strong><br>
+                    Navigate to <code>hadithhub12.github.io/hadith-hub</code>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <strong>Tap the Share Button</strong><br>
+                    Look for the square icon with an arrow pointing up at the bottom of Safari
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <strong>Select "Add to Home Screen"</strong><br>
+                    Scroll down in the share menu to find this option
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <strong>Tap "Add"</strong><br>
+                    Confirm the installation in the top right corner
+                </div>
+            </div>
+
+            <div class="tip">
+                <strong>Done!</strong> The Hadith Hub icon will appear on your home screen. Tap it to launch the app!
+            </div>
+        </section>
+
+        <section id="android-install">
+            <h2>3. Install on Android</h2>
+            <p>Add Hadith Hub to your Android home screen using Chrome browser.</p>
+
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <strong>Open Chrome</strong><br>
+                    Navigate to <code>hadithhub12.github.io/hadith-hub</code>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <strong>Tap the Menu (⋮)</strong><br>
+                    Look for three dots in the top right corner of Chrome
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <strong>Select "Add to Home screen" or "Install app"</strong><br>
+                    The wording varies by Android version
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <strong>Confirm Installation</strong><br>
+                    Tap "Add" or "Install" to complete
+                </div>
+            </div>
+
+            <div class="tip">
+                <strong>Quick Install:</strong> Some phones show an "Install" banner automatically at the bottom of the screen. Just tap it!
+            </div>
+        </section>
+
+        <section id="importing">
+            <h2>4. Importing Books</h2>
+            <p>Before reading, you need to download books to your device. They'll be stored locally for offline access.</p>
+
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <strong>Go to Import Tab</strong><br>
+                    Tap "Import" at the bottom navigation bar
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <strong>Browse Available Books</strong><br>
+                    Use search to find specific books, or filter by Shia/Sunni collections
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <strong>Select a Book</strong><br>
+                    Tap on a book to see its available volumes
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <strong>Download Volumes</strong><br>
+                    Select individual volumes or tap "Select All" to download the complete book
+                </div>
+            </div>
+
+            <h3>Bulk Download Options</h3>
+            <p>Use the buttons at the top of the Import page:</p>
+            <ul style="margin-left: 20px; color: var(--text-secondary);">
+                <li><strong>All Shia</strong> - Download all Shia hadith books</li>
+                <li><strong>All Sunni</strong> - Download all Sunni hadith books</li>
+                <li><strong>Everything</strong> - Download the entire library (~550 MB)</li>
+            </ul>
+
+            <div class="note">
+                <strong>Storage:</strong> Each volume is typically 0.5-5 MB. Make sure you have enough space on your device.
+            </div>
+        </section>
+
+        <section id="reading">
+            <h2>5. Reading Books</h2>
+            <p>Access your downloaded books from the Home tab.</p>
+
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <strong>Open Home Tab</strong><br>
+                    Your downloaded books appear as cards
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <strong>Select a Book</strong><br>
+                    Tap on a book card, then choose a volume
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <strong>Navigate Pages</strong><br>
+                    Swipe left/right or use arrow buttons to turn pages. Tap the page number to jump to a specific page.
+                </div>
+            </div>
+
+            <h3>Reading Modes</h3>
+            <ul style="margin-left: 20px; color: var(--text-secondary);">
+                <li><strong>Pagination</strong> - One page at a time (default)</li>
+                <li><strong>Continuous Scroll</strong> - Scroll through all pages seamlessly</li>
+            </ul>
+        </section>
+
+        <section id="settings">
+            <h2>6. Settings</h2>
+            <p>Customize your reading experience in the Settings tab.</p>
+
+            <h3>Language</h3>
+            <p>Switch between English and Arabic (العربية) interface.</p>
+
+            <h3>Theme</h3>
+            <p>Choose Light or Dark mode for comfortable reading day or night.</p>
+
+            <h3>Arabic Font</h3>
+            <p>Select from multiple Arabic font styles:</p>
+            <ul style="margin-left: 20px; color: var(--text-secondary);">
+                <li><strong>Amiri</strong> - Classic, elegant</li>
+                <li><strong>Noto Naskh</strong> - Clean, modern</li>
+                <li><strong>Nastaliq</strong> - Indo-Pak style</li>
+                <li><strong>Scheherazade</strong> - Traditional</li>
+            </ul>
+
+            <h3>Delete Books</h3>
+            <p>Free up storage by removing books you no longer need. You can always re-download them later.</p>
+        </section>
+
+        <footer>
+            <p>For support or feedback, visit our <a href="https://github.com/hadithhub12/hadith-hub/issues">GitHub Issues</a></p>
+            <p style="margin-top: 8px; font-size: 0.9rem;">Hadith Hub - Your Offline Islamic Library</p>
+        </footer>
+    </div>
+</body>
+</html>

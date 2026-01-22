@@ -326,6 +326,11 @@ const translations = {
     deleteBook: 'Delete Book',
     deleteBookConfirm: 'Are you sure you want to delete this book and all its data?',
     bookDeleted: 'Book deleted successfully',
+    // Help
+    help: 'Help & Guide',
+    userGuide: 'User Guide',
+    userGuideDesc: 'Learn how to use the app',
+    openGuide: 'Open Guide',
   },
   ar: {
     appName: 'مركز الحديث',
@@ -447,6 +452,11 @@ const translations = {
     deleteBook: 'حذف الكتاب',
     deleteBookConfirm: 'هل أنت متأكد من حذف هذا الكتاب وجميع بياناته؟',
     bookDeleted: 'تم حذف الكتاب بنجاح',
+    // Help
+    help: 'المساعدة والدليل',
+    userGuide: 'دليل المستخدم',
+    userGuideDesc: 'تعرف على كيفية استخدام التطبيق',
+    openGuide: 'فتح الدليل',
   },
 };
 
@@ -4935,6 +4945,42 @@ function App() {
                 {t.deleteAllData}
               </button>
             </div>
+
+            {/* Help & Guide */}
+            <div style={{ ...styles.card, ...responsiveStyles.cardResponsive, maxWidth: '600px' }}>
+              <div style={styles.cardTitle}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                {t.help}
+              </div>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '0.9rem' }}>
+                {t.userGuideDesc}
+              </p>
+              <a
+                href="guide.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  ...styles.btn,
+                  ...styles.btnSecondary,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  textDecoration: 'none',
+                  maxWidth: '200px',
+                  justifyContent: 'center',
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                </svg>
+                {t.openGuide}
+              </a>
+            </div>
           </div>
         </ResponsiveLayout>
       );
@@ -5282,6 +5328,41 @@ function App() {
               </svg>
               {t.deleteAllData}
             </button>
+          </div>
+
+          {/* Help & Guide */}
+          <div style={styles.card}>
+            <div style={styles.cardTitle}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              {t.help}
+            </div>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '12px', fontSize: '0.85rem' }}>
+              {t.userGuideDesc}
+            </p>
+            <a
+              href="guide.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                ...styles.btn,
+                ...styles.btnSecondary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                textDecoration: 'none',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+              </svg>
+              {t.openGuide}
+            </a>
           </div>
         </div>
 
