@@ -1343,6 +1343,9 @@ function App() {
 
         // GitHub format: transform to app's expected format
         if (isGitHub && data.books && data.baseUrl) {
+          // For GitHub LFS files, use media.githubusercontent.com instead of raw.githubusercontent.com
+          const lfsBaseUrl = data.baseUrl.replace('raw.githubusercontent.com', 'media.githubusercontent.com');
+
           const transformedBooks: AvailableBook[] = data.books.map((book: {
             slug: string;
             id: string;
@@ -1371,7 +1374,7 @@ function App() {
               volume: v.volume,
               size: v.size,
               sizeFormatted: v.sizeFormatted,
-              downloadUrl: `${data.baseUrl}/books/${v.filename}`,
+              downloadUrl: `${lfsBaseUrl}/books/${v.filename}`,
               bookId: book.id,
               bookTitle: book.titleAr,
               language: book.language || 'ar'
@@ -1406,7 +1409,7 @@ function App() {
               volume: v.volume,
               size: v.size,
               sizeFormatted: v.sizeFormatted,
-              downloadUrl: `${data.baseUrl}/translations/${v.filename}`,
+              downloadUrl: `${lfsBaseUrl}/translations/${v.filename}`,
               bookId: book.id,
               bookTitle: book.titleEn,
               language: 'en'
