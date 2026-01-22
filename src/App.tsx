@@ -1169,7 +1169,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [serverUrl, setServerUrl] = useState('http://192.168.0.92:3002');
+  const [serverUrl, setServerUrl] = useState('');
   const [language, setLanguage] = useState<Language>(savedLanguage);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
