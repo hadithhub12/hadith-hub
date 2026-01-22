@@ -101,12 +101,14 @@ interface AvailableBook {
   authorEn?: string;
   total: number;
   downloads: AvailableDownload[];
+  bookLanguage?: 'ar' | 'fa' | 'en';  // Language of the book content
 }
 
 type SearchMode = 'exact' | 'root';
 type InputMode = 'arabic' | 'roman';
 type ImportMode = 'arabic' | 'english';
 type SectFilter = 'all' | 'shia' | 'sunni';
+type LanguageFilter = 'all' | 'ar' | 'fa' | 'en';
 type ReadingMode = 'pagination' | 'scroll';
 
 // Book sect categorization - most books in this library are Shia
@@ -291,6 +293,12 @@ const translations = {
     sunni: 'Sunni',
     all: 'All',
     filterBySect: 'Filter by Sect',
+    // Language categorization
+    filterByLanguage: 'Filter by Language',
+    arabicBooks: 'Arabic',
+    persianBooks: 'Persian',
+    englishBooks: 'English',
+    comingSoon: 'Coming Soon',
     selectBooks: 'Select Books',
     allBooksSelected: 'All books',
     booksSelected: 'books selected',
@@ -417,6 +425,12 @@ const translations = {
     sunni: 'السنة',
     all: 'الكل',
     filterBySect: 'تصفية حسب المذهب',
+    // Language categorization
+    filterByLanguage: 'تصفية حسب اللغة',
+    arabicBooks: 'العربية',
+    persianBooks: 'الفارسية',
+    englishBooks: 'الإنجليزية',
+    comingSoon: 'قريباً',
     selectBooks: 'اختر الكتب',
     allBooksSelected: 'جميع الكتب',
     booksSelected: 'كتب مختارة',
@@ -1227,6 +1241,8 @@ function App() {
   const [showBookSelector, setShowBookSelector] = useState(false);
   // Import page sect filter
   const [importSectFilter, setImportSectFilter] = useState<SectFilter>('all');
+  // Import page language filter
+  const [importLanguageFilter, setImportLanguageFilter] = useState<LanguageFilter>('all');
   // Import page search and pagination
   const [importBookSearch, setImportBookSearch] = useState('');
   const [importBooksPage, setImportBooksPage] = useState(1);
@@ -1324,6 +1340,7 @@ function App() {
             authorAr: string;
             authorEn: string;
             sect: string;
+            language: 'ar' | 'fa' | 'en';
             volumes: Array<{ volume: number; filename: string; size: number; sizeFormatted: string }>;
             totalVolumes: number;
           }) => ({
@@ -1336,6 +1353,7 @@ function App() {
             authorAr: book.authorAr,
             authorEn: book.authorEn,
             sect: book.sect,
+            bookLanguage: book.language || 'ar',
             total: book.totalVolumes,
             downloads: book.volumes.map(v => ({
               filename: v.filename,
@@ -1345,7 +1363,7 @@ function App() {
               downloadUrl: `${data.baseUrl}/books/${v.filename}`,
               bookId: book.id,
               bookTitle: book.titleAr,
-              language: 'ar'
+              language: book.language || 'ar'
             }))
           }));
 
@@ -2948,6 +2966,91 @@ function App() {
                     </div>
                   )}
 
+                  {/* Language Filter */}
+                  {availableBooks.length > 1 && (
+                    <div style={{ marginBottom: '20px' }}>
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '8px' }}>
+                        {t.filterByLanguage}
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        gap: '4px',
+                        background: 'var(--bg)',
+                        borderRadius: '10px',
+                        padding: '4px',
+                        maxWidth: '500px',
+                      }}>
+                        <button
+                          style={{
+                            flex: 1,
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: importLanguageFilter === 'all' ? 'var(--card)' : 'transparent',
+                            color: importLanguageFilter === 'all' ? 'var(--primary)' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: 600,
+                            boxShadow: importLanguageFilter === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                          }}
+                          onClick={() => setImportLanguageFilter('all')}
+                        >
+                          {t.all}
+                        </button>
+                        <button
+                          style={{
+                            flex: 1,
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: importLanguageFilter === 'ar' ? 'var(--primary)' : 'transparent',
+                            color: importLanguageFilter === 'ar' ? 'white' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: 600,
+                          }}
+                          onClick={() => setImportLanguageFilter('ar')}
+                        >
+                          {t.arabicBooks}
+                        </button>
+                        <button
+                          style={{
+                            flex: 1,
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: importLanguageFilter === 'fa' ? '#f59e0b' : 'transparent',
+                            color: importLanguageFilter === 'fa' ? 'white' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: 600,
+                          }}
+                          onClick={() => setImportLanguageFilter('fa')}
+                        >
+                          {t.persianBooks}
+                        </button>
+                        <button
+                          style={{
+                            flex: 1,
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: importLanguageFilter === 'en' ? '#6366f1' : 'transparent',
+                            color: importLanguageFilter === 'en' ? 'white' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: 600,
+                            opacity: 0.6,
+                          }}
+                          onClick={() => setImportLanguageFilter('en')}
+                          title={t.comingSoon}
+                        >
+                          {t.englishBooks}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Search and Bulk Download Controls */}
                   <div style={{ marginBottom: '20px' }}>
                     {/* Search input */}
@@ -3053,11 +3156,13 @@ function App() {
 
                   {/* Available books list - use grid on desktop with pagination */}
                   {(() => {
-                    // Filter books by sect and search
+                    // Filter books by sect, language and search
                     const filteredBooks = availableBooks.filter(book => {
                       try {
                         const sectMatch = importSectFilter === 'all' || getBookSect(book.bookId || '') === importSectFilter;
                         if (!sectMatch) return false;
+                        const languageMatch = importLanguageFilter === 'all' || (book.bookLanguage || 'ar') === importLanguageFilter;
+                        if (!languageMatch) return false;
                         if (!importBookSearch.trim()) return true;
                         const searchLower = importBookSearch.toLowerCase();
                         const titleMatch = (book.bookTitle || '').toLowerCase().includes(searchLower) ||
@@ -3387,6 +3492,84 @@ function App() {
                       </button>
                     </div>
 
+                    {/* Language Filter - Mobile */}
+                    <div style={{
+                      display: 'flex',
+                      gap: '4px',
+                      background: 'var(--bg)',
+                      borderRadius: '10px',
+                      padding: '4px',
+                      marginTop: '12px',
+                    }}>
+                      <button
+                        style={{
+                          flex: 1,
+                          padding: '10px 8px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: importLanguageFilter === 'all' ? 'var(--card)' : 'transparent',
+                          color: importLanguageFilter === 'all' ? 'var(--primary)' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          boxShadow: importLanguageFilter === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        }}
+                        onClick={() => setImportLanguageFilter('all')}
+                      >
+                        {t.all}
+                      </button>
+                      <button
+                        style={{
+                          flex: 1,
+                          padding: '10px 8px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: importLanguageFilter === 'ar' ? 'var(--primary)' : 'transparent',
+                          color: importLanguageFilter === 'ar' ? 'white' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                        }}
+                        onClick={() => setImportLanguageFilter('ar')}
+                      >
+                        {t.arabicBooks}
+                      </button>
+                      <button
+                        style={{
+                          flex: 1,
+                          padding: '10px 8px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: importLanguageFilter === 'fa' ? '#f59e0b' : 'transparent',
+                          color: importLanguageFilter === 'fa' ? 'white' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                        }}
+                        onClick={() => setImportLanguageFilter('fa')}
+                      >
+                        {t.persianBooks}
+                      </button>
+                      <button
+                        style={{
+                          flex: 1,
+                          padding: '10px 8px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: importLanguageFilter === 'en' ? '#6366f1' : 'transparent',
+                          color: importLanguageFilter === 'en' ? 'white' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          opacity: 0.6,
+                        }}
+                        onClick={() => setImportLanguageFilter('en')}
+                        title={t.comingSoon}
+                      >
+                        {t.englishBooks}
+                      </button>
+                    </div>
+
                     {/* Bulk Download Buttons */}
                     {!bulkDownloading && !downloadingVolumes && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
@@ -3502,11 +3685,13 @@ function App() {
                 {availableBooks.length > 1 && (
                   <div style={{ marginBottom: '16px' }}>
                     {(() => {
-                      // Filter books by sect and search
+                      // Filter books by sect, language and search
                       const filteredBooks = availableBooks.filter(book => {
                         try {
                           const sectMatch = importSectFilter === 'all' || getBookSect(book.bookId || '') === importSectFilter;
                           if (!sectMatch) return false;
+                          const languageMatch = importLanguageFilter === 'all' || (book.bookLanguage || 'ar') === importLanguageFilter;
+                          if (!languageMatch) return false;
                           if (!importBookSearch.trim()) return true;
                           const searchLower = importBookSearch.toLowerCase();
                           const titleMatch = (book.bookTitle || '').toLowerCase().includes(searchLower) ||
