@@ -1264,6 +1264,10 @@ function App() {
   // Search pagination
   const [searchResultsPage, setSearchResultsPage] = useState(1);
   const RESULTS_PER_PAGE = 20;
+  // Home page pagination
+  const [homeShiaPage, setHomeShiaPage] = useState(1);
+  const [homeSunniPage, setHomeSunniPage] = useState(1);
+  const HOME_BOOKS_PER_PAGE = 12;
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Track data version to force re-render when volumes/pages are updated
   const [dataVersion, setDataVersion] = useState(0);
@@ -5769,56 +5773,98 @@ function App() {
                         {shiaBooks.length}
                       </span>
                     </div>
-                    <div style={responsiveStyles.bookGrid}>
-                      {shiaBooks.map(book => {
-                        const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title, author: book.author || '' };
-                        return (
-                          <div key={book.id} style={{ ...styles.bookCard, padding: '18px' }} onClick={() => handleBookSelect(book)}>
-                            <div style={{
-                              width: '44px',
-                              height: '44px',
-                              borderRadius: '12px',
-                              background: 'var(--primary-50)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                            }}>
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
-                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                              </svg>
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ ...styles.bookTitle, fontFamily: arabicFontFamily, fontSize: '1.05rem' }}>{displayInfo.title}</div>
-                              {displayInfo.author && (
-                                <div style={{
-                                  fontSize: '0.8rem',
-                                  color: 'var(--text-secondary)',
-                                  marginBottom: '4px',
-                                  fontFamily: language === 'ar' ? arabicFontFamily : 'inherit',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                }}>
-                                  {displayInfo.author}
+                    {(() => {
+                      const shiaTotalPages = Math.max(1, Math.ceil(shiaBooks.length / HOME_BOOKS_PER_PAGE));
+                      const shiaStartIdx = (homeShiaPage - 1) * HOME_BOOKS_PER_PAGE;
+                      const paginatedShiaBooks = shiaBooks.slice(shiaStartIdx, shiaStartIdx + HOME_BOOKS_PER_PAGE);
+                      return (
+                        <>
+                          <div style={responsiveStyles.bookGrid}>
+                            {paginatedShiaBooks.map(book => {
+                              const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title, author: book.author || '' };
+                              return (
+                                <div key={book.id} style={{ ...styles.bookCard, padding: '18px' }} onClick={() => handleBookSelect(book)}>
+                                  <div style={{
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '12px',
+                                    background: 'var(--primary-50)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                  }}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                    </svg>
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ ...styles.bookTitle, fontFamily: arabicFontFamily, fontSize: '1.05rem' }}>{displayInfo.title}</div>
+                                    {displayInfo.author && (
+                                      <div style={{
+                                        fontSize: '0.8rem',
+                                        color: 'var(--text-secondary)',
+                                        marginBottom: '4px',
+                                        fontFamily: language === 'ar' ? arabicFontFamily : 'inherit',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                      }}>
+                                        {displayInfo.author}
+                                      </div>
+                                    )}
+                                    <div style={styles.bookMeta}>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                        <line x1="3" y1="9" x2="21" y2="9" />
+                                      </svg>
+                                      {book.volumes} {t.volumes}
+                                    </div>
+                                  </div>
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2">
+                                    <polyline points="9 18 15 12 9 6" />
+                                  </svg>
                                 </div>
-                              )}
-                              <div style={styles.bookMeta}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                  <line x1="3" y1="9" x2="21" y2="9" />
-                                </svg>
-                                {book.volumes} {t.volumes}
-                              </div>
-                            </div>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2">
-                              <polyline points="9 18 15 12 9 6" />
-                            </svg>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
-                    </div>
+                          {shiaTotalPages > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '20px' }}>
+                              <button
+                                style={{
+                                  ...styles.btn,
+                                  ...styles.btnSecondary,
+                                  width: 'auto',
+                                  padding: '10px 20px',
+                                  opacity: homeShiaPage === 1 ? 0.5 : 1,
+                                }}
+                                onClick={() => setHomeShiaPage(p => Math.max(1, p - 1))}
+                                disabled={homeShiaPage === 1}
+                              >
+                                {t.previousPage}
+                              </button>
+                              <span style={{ color: 'var(--text-secondary)' }}>
+                                {t.pageOf} {homeShiaPage} / {shiaTotalPages}
+                              </span>
+                              <button
+                                style={{
+                                  ...styles.btn,
+                                  ...styles.btnSecondary,
+                                  width: 'auto',
+                                  padding: '10px 20px',
+                                  opacity: homeShiaPage === shiaTotalPages ? 0.5 : 1,
+                                }}
+                                onClick={() => setHomeShiaPage(p => Math.min(shiaTotalPages, p + 1))}
+                                disabled={homeShiaPage === shiaTotalPages}
+                              >
+                                {t.nextPage}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -5859,56 +5905,98 @@ function App() {
                         {sunniBooks.length}
                       </span>
                     </div>
-                    <div style={responsiveStyles.bookGrid}>
-                      {sunniBooks.map(book => {
-                        const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title, author: book.author || '' };
-                        return (
-                          <div key={book.id} style={{ ...styles.bookCard, padding: '18px' }} onClick={() => handleBookSelect(book)}>
-                            <div style={{
-                              width: '44px',
-                              height: '44px',
-                              borderRadius: '12px',
-                              background: 'var(--accent-blue-light)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                            }}>
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" strokeWidth="2">
-                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                              </svg>
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ ...styles.bookTitle, fontFamily: arabicFontFamily, fontSize: '1.05rem' }}>{displayInfo.title}</div>
-                              {displayInfo.author && (
-                                <div style={{
-                                  fontSize: '0.8rem',
-                                  color: 'var(--text-secondary)',
-                                  marginBottom: '4px',
-                                  fontFamily: language === 'ar' ? arabicFontFamily : 'inherit',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                }}>
-                                  {displayInfo.author}
+                    {(() => {
+                      const sunniTotalPages = Math.max(1, Math.ceil(sunniBooks.length / HOME_BOOKS_PER_PAGE));
+                      const sunniStartIdx = (homeSunniPage - 1) * HOME_BOOKS_PER_PAGE;
+                      const paginatedSunniBooks = sunniBooks.slice(sunniStartIdx, sunniStartIdx + HOME_BOOKS_PER_PAGE);
+                      return (
+                        <>
+                          <div style={responsiveStyles.bookGrid}>
+                            {paginatedSunniBooks.map(book => {
+                              const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title, author: book.author || '' };
+                              return (
+                                <div key={book.id} style={{ ...styles.bookCard, padding: '18px' }} onClick={() => handleBookSelect(book)}>
+                                  <div style={{
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '12px',
+                                    background: 'var(--accent-blue-light)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                  }}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" strokeWidth="2">
+                                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                    </svg>
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ ...styles.bookTitle, fontFamily: arabicFontFamily, fontSize: '1.05rem' }}>{displayInfo.title}</div>
+                                    {displayInfo.author && (
+                                      <div style={{
+                                        fontSize: '0.8rem',
+                                        color: 'var(--text-secondary)',
+                                        marginBottom: '4px',
+                                        fontFamily: language === 'ar' ? arabicFontFamily : 'inherit',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                      }}>
+                                        {displayInfo.author}
+                                      </div>
+                                    )}
+                                    <div style={styles.bookMeta}>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                        <line x1="3" y1="9" x2="21" y2="9" />
+                                      </svg>
+                                      {book.volumes} {t.volumes}
+                                    </div>
+                                  </div>
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2">
+                                    <polyline points="9 18 15 12 9 6" />
+                                  </svg>
                                 </div>
-                              )}
-                              <div style={styles.bookMeta}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                  <line x1="3" y1="9" x2="21" y2="9" />
-                                </svg>
-                                {book.volumes} {t.volumes}
-                              </div>
-                            </div>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2">
-                              <polyline points="9 18 15 12 9 6" />
-                            </svg>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
-                    </div>
+                          {sunniTotalPages > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '20px' }}>
+                              <button
+                                style={{
+                                  ...styles.btn,
+                                  ...styles.btnSecondary,
+                                  width: 'auto',
+                                  padding: '10px 20px',
+                                  opacity: homeSunniPage === 1 ? 0.5 : 1,
+                                }}
+                                onClick={() => setHomeSunniPage(p => Math.max(1, p - 1))}
+                                disabled={homeSunniPage === 1}
+                              >
+                                {t.previousPage}
+                              </button>
+                              <span style={{ color: 'var(--text-secondary)' }}>
+                                {t.pageOf} {homeSunniPage} / {sunniTotalPages}
+                              </span>
+                              <button
+                                style={{
+                                  ...styles.btn,
+                                  ...styles.btnSecondary,
+                                  width: 'auto',
+                                  padding: '10px 20px',
+                                  opacity: homeSunniPage === sunniTotalPages ? 0.5 : 1,
+                                }}
+                                onClick={() => setHomeSunniPage(p => Math.min(sunniTotalPages, p + 1))}
+                                disabled={homeSunniPage === sunniTotalPages}
+                              >
+                                {t.nextPage}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </>
@@ -6061,55 +6149,99 @@ function App() {
                     {shiaBooks.length}
                   </span>
                 </div>
-                {shiaBooks.map(book => {
-                  const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title, author: book.author || '' };
+                {(() => {
+                  const shiaTotalPages = Math.max(1, Math.ceil(shiaBooks.length / HOME_BOOKS_PER_PAGE));
+                  const shiaStartIdx = (homeShiaPage - 1) * HOME_BOOKS_PER_PAGE;
+                  const paginatedShiaBooks = shiaBooks.slice(shiaStartIdx, shiaStartIdx + HOME_BOOKS_PER_PAGE);
                   return (
-                    <div key={book.id} style={styles.bookCard} onClick={() => handleBookSelect(book)}>
-                      {/* Book Icon */}
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '10px',
-                        background: 'var(--primary-50)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
-                          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                        </svg>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ ...styles.bookTitle, fontFamily: arabicFontFamily }}>{displayInfo.title}</div>
-                        {displayInfo.author && (
-                          <div style={{
-                            fontSize: '0.75rem',
-                            color: 'var(--text-secondary)',
-                            marginBottom: '4px',
-                            fontFamily: language === 'ar' ? arabicFontFamily : 'inherit',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}>
-                            {displayInfo.author}
+                    <>
+                      {paginatedShiaBooks.map(book => {
+                        const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title, author: book.author || '' };
+                        return (
+                          <div key={book.id} style={styles.bookCard} onClick={() => handleBookSelect(book)}>
+                            {/* Book Icon */}
+                            <div style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '10px',
+                              background: 'var(--primary-50)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                              </svg>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ ...styles.bookTitle, fontFamily: arabicFontFamily }}>{displayInfo.title}</div>
+                              {displayInfo.author && (
+                                <div style={{
+                                  fontSize: '0.75rem',
+                                  color: 'var(--text-secondary)',
+                                  marginBottom: '4px',
+                                  fontFamily: language === 'ar' ? arabicFontFamily : 'inherit',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}>
+                                  {displayInfo.author}
+                                </div>
+                              )}
+                              <div style={styles.bookMeta}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                  <line x1="3" y1="9" x2="21" y2="9" />
+                                </svg>
+                                {book.volumes} {t.volumes}
+                              </div>
+                            </div>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2">
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
                           </div>
-                        )}
-                        <div style={styles.bookMeta}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                            <line x1="3" y1="9" x2="21" y2="9" />
-                          </svg>
-                          {book.volumes} {t.volumes}
+                        );
+                      })}
+                      {shiaTotalPages > 1 && (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
+                          <button
+                            style={{
+                              ...styles.btn,
+                              ...styles.btnSecondary,
+                              width: 'auto',
+                              padding: '8px 16px',
+                              fontSize: '0.85rem',
+                              opacity: homeShiaPage === 1 ? 0.5 : 1,
+                            }}
+                            onClick={() => setHomeShiaPage(p => Math.max(1, p - 1))}
+                            disabled={homeShiaPage === 1}
+                          >
+                            {t.previousPage}
+                          </button>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                            {homeShiaPage} / {shiaTotalPages}
+                          </span>
+                          <button
+                            style={{
+                              ...styles.btn,
+                              ...styles.btnSecondary,
+                              width: 'auto',
+                              padding: '8px 16px',
+                              fontSize: '0.85rem',
+                              opacity: homeShiaPage === shiaTotalPages ? 0.5 : 1,
+                            }}
+                            onClick={() => setHomeShiaPage(p => Math.min(shiaTotalPages, p + 1))}
+                            disabled={homeShiaPage === shiaTotalPages}
+                          >
+                            {t.nextPage}
+                          </button>
                         </div>
-                      </div>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2">
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </div>
+                      )}
+                    </>
                   );
-                })}
+                })()}
               </div>
             )}
 
@@ -6150,55 +6282,99 @@ function App() {
                     {sunniBooks.length}
                   </span>
                 </div>
-                {sunniBooks.map(book => {
-                  const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title, author: book.author || '' };
+                {(() => {
+                  const sunniTotalPages = Math.max(1, Math.ceil(sunniBooks.length / HOME_BOOKS_PER_PAGE));
+                  const sunniStartIdx = (homeSunniPage - 1) * HOME_BOOKS_PER_PAGE;
+                  const paginatedSunniBooks = sunniBooks.slice(sunniStartIdx, sunniStartIdx + HOME_BOOKS_PER_PAGE);
                   return (
-                    <div key={book.id} style={styles.bookCard} onClick={() => handleBookSelect(book)}>
-                      {/* Book Icon */}
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '10px',
-                        background: 'var(--accent-blue-light)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" strokeWidth="2">
-                          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                        </svg>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ ...styles.bookTitle, fontFamily: arabicFontFamily }}>{displayInfo.title}</div>
-                        {displayInfo.author && (
-                          <div style={{
-                            fontSize: '0.75rem',
-                            color: 'var(--text-secondary)',
-                            marginBottom: '4px',
-                            fontFamily: language === 'ar' ? arabicFontFamily : 'inherit',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}>
-                            {displayInfo.author}
+                    <>
+                      {paginatedSunniBooks.map(book => {
+                        const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title, author: book.author || '' };
+                        return (
+                          <div key={book.id} style={styles.bookCard} onClick={() => handleBookSelect(book)}>
+                            {/* Book Icon */}
+                            <div style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '10px',
+                              background: 'var(--accent-blue-light)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" strokeWidth="2">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                              </svg>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ ...styles.bookTitle, fontFamily: arabicFontFamily }}>{displayInfo.title}</div>
+                              {displayInfo.author && (
+                                <div style={{
+                                  fontSize: '0.75rem',
+                                  color: 'var(--text-secondary)',
+                                  marginBottom: '4px',
+                                  fontFamily: language === 'ar' ? arabicFontFamily : 'inherit',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}>
+                                  {displayInfo.author}
+                                </div>
+                              )}
+                              <div style={styles.bookMeta}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                  <line x1="3" y1="9" x2="21" y2="9" />
+                                </svg>
+                                {book.volumes} {t.volumes}
+                              </div>
+                            </div>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2">
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
                           </div>
-                        )}
-                        <div style={styles.bookMeta}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                            <line x1="3" y1="9" x2="21" y2="9" />
-                          </svg>
-                          {book.volumes} {t.volumes}
+                        );
+                      })}
+                      {sunniTotalPages > 1 && (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '16px' }}>
+                          <button
+                            style={{
+                              ...styles.btn,
+                              ...styles.btnSecondary,
+                              width: 'auto',
+                              padding: '8px 16px',
+                              fontSize: '0.85rem',
+                              opacity: homeSunniPage === 1 ? 0.5 : 1,
+                            }}
+                            onClick={() => setHomeSunniPage(p => Math.max(1, p - 1))}
+                            disabled={homeSunniPage === 1}
+                          >
+                            {t.previousPage}
+                          </button>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                            {homeSunniPage} / {sunniTotalPages}
+                          </span>
+                          <button
+                            style={{
+                              ...styles.btn,
+                              ...styles.btnSecondary,
+                              width: 'auto',
+                              padding: '8px 16px',
+                              fontSize: '0.85rem',
+                              opacity: homeSunniPage === sunniTotalPages ? 0.5 : 1,
+                            }}
+                            onClick={() => setHomeSunniPage(p => Math.min(sunniTotalPages, p + 1))}
+                            disabled={homeSunniPage === sunniTotalPages}
+                          >
+                            {t.nextPage}
+                          </button>
                         </div>
-                      </div>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2">
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </div>
+                      )}
+                    </>
                   );
-                })}
+                })()}
               </div>
             )}
           </>
