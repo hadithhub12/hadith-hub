@@ -94,13 +94,27 @@ The app will automatically fetch the list of available books from the server. Yo
 
 ![Loading Books](screenshots/loading-books.png)
 
-### Step 3: Browse and Search Books
+### Step 3: Filter and Search Books
 
-Once loaded, you can:
+Once loaded, you can filter and search books using multiple criteria:
 
-- **Search** for specific books using the search bar
-- **Filter** by sect (All, Shia, Sunni)
-- **Browse** through pages of available books
+#### Filter by Sect
+- **All** - Show all books
+- **Shia** - Show only Shia hadith collections
+- **Sunni** - Show only Sunni hadith collections
+
+#### Filter by Language
+- **All** - Show all books
+- **Arabic** - Original Arabic texts (465 books)
+- **Persian** - Persian translations (159 books)
+- **English** - Coming soon
+
+#### Search
+Use the search bar to find books by:
+- Book title (Arabic or English)
+- Author name
+
+All filters work together, so you can combine them (e.g., show only Persian Shia books).
 
 ![Book List](screenshots/book-list.png)
 
