@@ -349,6 +349,10 @@ const translations = {
     userGuide: 'User Guide',
     userGuideDesc: 'Learn how to use the app',
     openGuide: 'Open Guide',
+    // Home book search
+    searchBooksHome: 'Search books...',
+    collapse: 'Collapse',
+    expand: 'Expand',
   },
   ar: {
     appName: 'مركز الحديث',
@@ -481,6 +485,10 @@ const translations = {
     userGuide: 'دليل المستخدم',
     userGuideDesc: 'تعرف على كيفية استخدام التطبيق',
     openGuide: 'فتح الدليل',
+    // Home book search
+    searchBooksHome: 'البحث في الكتب...',
+    collapse: 'طي',
+    expand: 'توسيع',
   },
 };
 
@@ -1281,6 +1289,10 @@ function App() {
   const [homeShiaPage, setHomeShiaPage] = useState(1);
   const [homeSunniPage, setHomeSunniPage] = useState(1);
   const HOME_BOOKS_PER_PAGE = 12;
+  // Home page book search and collapsible sections
+  const [homeBookSearch, setHomeBookSearch] = useState('');
+  const [shiaCollapsed, setShiaCollapsed] = useState(false);
+  const [sunniCollapsed, setSunniCollapsed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Track data version to force re-render when volumes/pages are updated
   const [dataVersion, setDataVersion] = useState(0);
@@ -2098,8 +2110,21 @@ function App() {
 
   // Memoized book categorization for Home view (must be before any early returns)
   const displayBooks = useMemo(() => books.filter(b => !b.id.endsWith('_en')), [books]);
-  const shiaBooks = useMemo(() => displayBooks.filter(b => getBookSect(b.id) === 'shia'), [displayBooks]);
-  const sunniBooks = useMemo(() => displayBooks.filter(b => getBookSect(b.id) === 'sunni'), [displayBooks]);
+
+  // Filter books by search query (searches title and author)
+  const filteredDisplayBooks = useMemo(() => {
+    if (!homeBookSearch.trim()) return displayBooks;
+    const searchLower = homeBookSearch.toLowerCase();
+    return displayBooks.filter(book => {
+      const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title, author: book.author || '' };
+      return displayInfo.title.toLowerCase().includes(searchLower) ||
+             (displayInfo.author && displayInfo.author.toLowerCase().includes(searchLower)) ||
+             book.title.toLowerCase().includes(searchLower);
+    });
+  }, [displayBooks, homeBookSearch, language]);
+
+  const shiaBooks = useMemo(() => filteredDisplayBooks.filter(b => getBookSect(b.id) === 'shia'), [filteredDisplayBooks]);
+  const sunniBooks = useMemo(() => filteredDisplayBooks.filter(b => getBookSect(b.id) === 'sunni'), [filteredDisplayBooks]);
 
   // Reader View
   if (view === 'reader' && selectedBook && selectedVolume) {
@@ -2126,11 +2151,13 @@ function App() {
       return translationPage?.text ? formatPageText(translationPage.text) : null;
     };
 
-    // Page navigation component - only for pagination mode
-    const PageNavigation = ({ variant = 'bottom' }: { variant?: 'header' | 'bottom' }) => {
+    // Render page navigation inline to prevent input focus loss
+    // (Component defined inside render would recreate on each render, causing unmount/remount)
+    const renderPageNavigation = (variant: 'header' | 'bottom') => {
       const isHeader = variant === 'header';
       const inputValue = isHeader ? headerPageInput : pageInputValue;
       const setInputValue = isHeader ? setHeaderPageInput : setPageInputValue;
+      const inputId = isHeader ? 'page-input-header' : 'page-input-bottom';
 
       return (
         <div style={{
@@ -2166,6 +2193,8 @@ function App() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, justifyContent: 'center' }}>
             <input
+              key={inputId}
+              id={inputId}
               type="number"
               style={{
                 width: '50px',
@@ -2226,7 +2255,7 @@ function App() {
             {isRTL ? '←' : '→'}
           </button>
         </div>
-      )
+      );
     };
 
     // Continuous Scroll Mode
@@ -2729,7 +2758,7 @@ function App() {
             </div>
           </div>
           {/* Header page navigation - same as bottom */}
-          <PageNavigation variant="header" />
+          {renderPageNavigation('header')}
         </header>
 
         <div style={{ ...styles.content, paddingBottom: '16px' }}>
@@ -2831,7 +2860,7 @@ function App() {
         </div>
 
         {/* Bottom page navigation */}
-        <PageNavigation variant="bottom" />
+        {renderPageNavigation('bottom')}
 
         <Nav view={view} onNavigate={setView} t={t} />
       </div>
@@ -5817,15 +5846,101 @@ function App() {
               </div>
             ) : (
               <>
+                {/* Book Search Bar */}
+                <div style={{
+                  marginBottom: '24px',
+                  position: 'relative',
+                }}>
+                  <input
+                    type="text"
+                    placeholder={t.searchBooksHome}
+                    value={homeBookSearch}
+                    onChange={(e) => {
+                      setHomeBookSearch(e.target.value);
+                      // Reset pagination when searching
+                      setHomeShiaPage(1);
+                      setHomeSunniPage(1);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px 14px 48px',
+                      borderRadius: '12px',
+                      border: '1.5px solid var(--border)',
+                      fontSize: '0.95rem',
+                      fontFamily: 'inherit',
+                      background: 'var(--card)',
+                      color: 'var(--text)',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--text-tertiary)"
+                    strokeWidth="2"
+                    style={{
+                      position: 'absolute',
+                      left: isRTL ? 'auto' : '16px',
+                      right: isRTL ? '16px' : 'auto',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                    }}
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                  {homeBookSearch && (
+                    <button
+                      onClick={() => {
+                        setHomeBookSearch('');
+                        setHomeShiaPage(1);
+                        setHomeSunniPage(1);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: isRTL ? 'auto' : '12px',
+                        left: isRTL ? '12px' : 'auto',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'var(--border)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '24px',
+                        height: '24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
                 {/* Shia Books Section */}
                 {shiaBooks.length > 0 && (
                   <div style={{ marginBottom: '32px' }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      marginBottom: '16px',
-                    }}>
+                    <button
+                      onClick={() => setShiaCollapsed(!shiaCollapsed)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: shiaCollapsed ? '0' : '16px',
+                        width: '100%',
+                        background: 'none',
+                        border: 'none',
+                        padding: '8px 0',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
                       <div style={{
                         width: '32px',
                         height: '32px',
@@ -5840,7 +5955,7 @@ function App() {
                           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                         </svg>
                       </div>
-                      <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                      <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text)', letterSpacing: '-0.01em', flex: 1 }}>
                         {t.shiaBooks}
                       </h2>
                       <span style={{
@@ -5853,8 +5968,22 @@ function App() {
                       }}>
                         {shiaBooks.length}
                       </span>
-                    </div>
-                    {(() => {
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="var(--text-tertiary)"
+                        strokeWidth="2"
+                        style={{
+                          transform: shiaCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease',
+                        }}
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                    {!shiaCollapsed && (() => {
                       const shiaTotalPages = Math.max(1, Math.ceil(shiaBooks.length / HOME_BOOKS_PER_PAGE));
                       const shiaStartIdx = (homeShiaPage - 1) * HOME_BOOKS_PER_PAGE;
                       const paginatedShiaBooks = shiaBooks.slice(shiaStartIdx, shiaStartIdx + HOME_BOOKS_PER_PAGE);
@@ -5952,12 +6081,21 @@ function App() {
                 {/* Sunni Books Section */}
                 {sunniBooks.length > 0 && (
                   <div style={{ marginBottom: '32px' }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      marginBottom: '16px',
-                    }}>
+                    <button
+                      onClick={() => setSunniCollapsed(!sunniCollapsed)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: sunniCollapsed ? '0' : '16px',
+                        width: '100%',
+                        background: 'none',
+                        border: 'none',
+                        padding: '8px 0',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
                       <div style={{
                         width: '32px',
                         height: '32px',
@@ -5972,7 +6110,7 @@ function App() {
                           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                         </svg>
                       </div>
-                      <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                      <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text)', letterSpacing: '-0.01em', flex: 1 }}>
                         {t.sunniBooks}
                       </h2>
                       <span style={{
@@ -5985,8 +6123,22 @@ function App() {
                       }}>
                         {sunniBooks.length}
                       </span>
-                    </div>
-                    {(() => {
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="var(--text-tertiary)"
+                        strokeWidth="2"
+                        style={{
+                          transform: sunniCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease',
+                        }}
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                    {!sunniCollapsed && (() => {
                       const sunniTotalPages = Math.max(1, Math.ceil(sunniBooks.length / HOME_BOOKS_PER_PAGE));
                       const sunniStartIdx = (homeSunniPage - 1) * HOME_BOOKS_PER_PAGE;
                       const paginatedSunniBooks = sunniBooks.slice(sunniStartIdx, sunniStartIdx + HOME_BOOKS_PER_PAGE);
@@ -6193,15 +6345,100 @@ function App() {
           </div>
         ) : (
           <>
+            {/* Book Search Bar - Mobile */}
+            <div style={{
+              marginBottom: '16px',
+              position: 'relative',
+            }}>
+              <input
+                type="text"
+                placeholder={t.searchBooksHome}
+                value={homeBookSearch}
+                onChange={(e) => {
+                  setHomeBookSearch(e.target.value);
+                  setHomeShiaPage(1);
+                  setHomeSunniPage(1);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px 12px 42px',
+                  borderRadius: '10px',
+                  border: '1.5px solid var(--border)',
+                  fontSize: '0.9rem',
+                  fontFamily: 'inherit',
+                  background: 'var(--card)',
+                  color: 'var(--text)',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--text-tertiary)"
+                strokeWidth="2"
+                style={{
+                  position: 'absolute',
+                  left: isRTL ? 'auto' : '14px',
+                  right: isRTL ? '14px' : 'auto',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }}
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              {homeBookSearch && (
+                <button
+                  onClick={() => {
+                    setHomeBookSearch('');
+                    setHomeShiaPage(1);
+                    setHomeSunniPage(1);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: isRTL ? 'auto' : '10px',
+                    left: isRTL ? '10px' : 'auto',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'var(--border)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '22px',
+                    height: '22px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
             {/* Shia Books Section */}
             {shiaBooks.length > 0 && (
               <div style={{ marginBottom: '20px' }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  marginBottom: '12px',
-                }}>
+                <button
+                  onClick={() => setShiaCollapsed(!shiaCollapsed)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    marginBottom: shiaCollapsed ? '0' : '12px',
+                    width: '100%',
+                    background: 'none',
+                    border: 'none',
+                    padding: '6px 0',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
                   <div style={{
                     width: '28px',
                     height: '28px',
@@ -6216,7 +6453,7 @@ function App() {
                       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                     </svg>
                   </div>
-                  <h2 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                  <h2 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, color: 'var(--text)', letterSpacing: '-0.01em', flex: 1 }}>
                     {t.shiaBooks}
                   </h2>
                   <span style={{
@@ -6229,8 +6466,22 @@ function App() {
                   }}>
                     {shiaBooks.length}
                   </span>
-                </div>
-                {(() => {
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--text-tertiary)"
+                    strokeWidth="2"
+                    style={{
+                      transform: shiaCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                {!shiaCollapsed && (() => {
                   const shiaTotalPages = Math.max(1, Math.ceil(shiaBooks.length / HOME_BOOKS_PER_PAGE));
                   const shiaStartIdx = (homeShiaPage - 1) * HOME_BOOKS_PER_PAGE;
                   const paginatedShiaBooks = shiaBooks.slice(shiaStartIdx, shiaStartIdx + HOME_BOOKS_PER_PAGE);
@@ -6329,12 +6580,21 @@ function App() {
             {/* Sunni Books Section */}
             {sunniBooks.length > 0 && (
               <div style={{ marginBottom: '20px' }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  marginBottom: '12px',
-                }}>
+                <button
+                  onClick={() => setSunniCollapsed(!sunniCollapsed)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    marginBottom: sunniCollapsed ? '0' : '12px',
+                    width: '100%',
+                    background: 'none',
+                    border: 'none',
+                    padding: '6px 0',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
                   <div style={{
                     width: '28px',
                     height: '28px',
@@ -6349,7 +6609,7 @@ function App() {
                       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                     </svg>
                   </div>
-                  <h2 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                  <h2 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, color: 'var(--text)', letterSpacing: '-0.01em', flex: 1 }}>
                     {t.sunniBooks}
                   </h2>
                   <span style={{
@@ -6362,8 +6622,22 @@ function App() {
                   }}>
                     {sunniBooks.length}
                   </span>
-                </div>
-                {(() => {
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--text-tertiary)"
+                    strokeWidth="2"
+                    style={{
+                      transform: sunniCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                {!sunniCollapsed && (() => {
                   const sunniTotalPages = Math.max(1, Math.ceil(sunniBooks.length / HOME_BOOKS_PER_PAGE));
                   const sunniStartIdx = (homeSunniPage - 1) * HOME_BOOKS_PER_PAGE;
                   const paginatedSunniBooks = sunniBooks.slice(sunniStartIdx, sunniStartIdx + HOME_BOOKS_PER_PAGE);
