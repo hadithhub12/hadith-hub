@@ -353,6 +353,7 @@ const translations = {
     searchBooksHome: 'Search books...',
     collapse: 'Collapse',
     expand: 'Expand',
+    noSearchResults: 'No books found matching your search.',
   },
   ar: {
     appName: 'مركز الحديث',
@@ -489,6 +490,7 @@ const translations = {
     searchBooksHome: 'البحث في الكتب...',
     collapse: 'طي',
     expand: 'توسيع',
+    noSearchResults: 'لم يتم العثور على كتب تطابق بحثك.',
   },
 };
 
@@ -5923,6 +5925,21 @@ function App() {
                   )}
                 </div>
 
+                {/* No search results message */}
+                {homeBookSearch.trim() && shiaBooks.length === 0 && sunniBooks.length === 0 && (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '40px 20px',
+                    color: 'var(--text-secondary)',
+                  }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" style={{ marginBottom: '16px' }}>
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="M21 21l-4.35-4.35" />
+                    </svg>
+                    <p style={{ margin: 0, fontSize: '1rem' }}>{t.noSearchResults}</p>
+                  </div>
+                )}
+
                 {/* Shia Books Section */}
                 {shiaBooks.length > 0 && (
                   <div style={{ marginBottom: '32px' }}>
@@ -6420,6 +6437,21 @@ function App() {
                 </button>
               )}
             </div>
+
+            {/* No search results message - Mobile */}
+            {homeBookSearch.trim() && shiaBooks.length === 0 && sunniBooks.length === 0 && (
+              <div style={{
+                textAlign: 'center',
+                padding: '32px 16px',
+                color: 'var(--text-secondary)',
+              }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" style={{ marginBottom: '12px' }}>
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+                <p style={{ margin: 0, fontSize: '0.95rem' }}>{t.noSearchResults}</p>
+              </div>
+            )}
 
             {/* Shia Books Section */}
             {shiaBooks.length > 0 && (

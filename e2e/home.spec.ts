@@ -210,3 +210,184 @@ test.describe('Responsive Design', () => {
     expect(content).toBeTruthy();
   });
 });
+
+test.describe('Home Page - Book Search', () => {
+  test.beforeEach(async ({ page }) => {
+    // Set up mock books for search testing
+    await page.goto('/');
+    await page.evaluate(async () => {
+      const DB_NAME = 'hadithHub';
+      const DB_VERSION = 1;
+
+      return new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = () => reject(request.error);
+
+        request.onupgradeneeded = (event) => {
+          const db = (event.target as IDBOpenDBRequest).result;
+          if (!db.objectStoreNames.contains('books')) {
+            db.createObjectStore('books', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('volumes')) {
+            db.createObjectStore('volumes', { keyPath: ['bookId', 'volume'] });
+          }
+          if (!db.objectStoreNames.contains('pages')) {
+            const pageStore = db.createObjectStore('pages', { keyPath: ['bookId', 'volume', 'page'] });
+            pageStore.createIndex('bookId', 'bookId', { unique: false });
+            pageStore.createIndex('bookVolume', ['bookId', 'volume'], { unique: false });
+          }
+        };
+
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction(['books', 'volumes', 'pages'], 'readwrite');
+
+          // Add multiple mock books with different titles for search testing
+          tx.objectStore('books').put({
+            id: 'search-test-001',
+            title: 'كتاب التوحيد',
+            author: 'الشيخ الصدوق',
+            volumes: 1,
+            importedAt: Date.now(),
+          });
+          tx.objectStore('books').put({
+            id: 'search-test-002',
+            title: 'كتاب الكافي',
+            author: 'الشيخ الكليني',
+            volumes: 1,
+            importedAt: Date.now(),
+          });
+          tx.objectStore('books').put({
+            id: 'search-test-003',
+            title: 'صحيح البخاري',
+            author: 'الإمام البخاري',
+            volumes: 1,
+            importedAt: Date.now(),
+          });
+
+          // Add mock volumes
+          ['search-test-001', 'search-test-002', 'search-test-003'].forEach(bookId => {
+            tx.objectStore('volumes').put({
+              bookId,
+              volume: 1,
+              totalPages: 1,
+              importedAt: Date.now(),
+            });
+            tx.objectStore('pages').put({
+              bookId,
+              volume: 1,
+              page: 1,
+              text: JSON.stringify(['بسم الله الرحمن الرحيم']),
+            });
+          });
+
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+      });
+    });
+
+    await page.reload();
+    await page.waitForTimeout(1500);
+  });
+
+  test('should display search input on home page', async ({ page }) => {
+    // Look for search input with placeholder
+    const searchInput = page.locator('input[placeholder*="Search books"]').or(page.locator('input[placeholder*="البحث في الكتب"]'));
+    const inputCount = await searchInput.count();
+
+    expect(inputCount).toBeGreaterThan(0);
+  });
+
+  test('should filter books when typing in search', async ({ page }) => {
+    const searchInput = page.locator('input[placeholder*="Search books"]').or(page.locator('input[placeholder*="البحث في الكتب"]'));
+
+    if (await searchInput.count() > 0) {
+      // Type in search
+      await searchInput.first().fill('التوحيد');
+      await page.waitForTimeout(300);
+
+      // Check if matching book is visible
+      const matchingBook = await page.locator('text=كتاب التوحيد').count();
+      expect(matchingBook).toBeGreaterThan(0);
+    }
+  });
+
+  test('should show no results message when search has no matches', async ({ page }) => {
+    const searchInput = page.locator('input[placeholder*="Search books"]').or(page.locator('input[placeholder*="البحث في الكتب"]'));
+
+    if (await searchInput.count() > 0) {
+      // Type a search that won't match any books
+      await searchInput.first().fill('xyz123nonexistent');
+      await page.waitForTimeout(300);
+
+      // Check for no results message
+      const noResults = await page.locator('text=No books found').or(page.locator('text=لم يتم العثور')).count();
+      expect(noResults).toBeGreaterThan(0);
+    }
+  });
+
+  test('should maintain search input focus while typing', async ({ page }) => {
+    const searchInput = page.locator('input[placeholder*="Search books"]').or(page.locator('input[placeholder*="البحث في الكتب"]'));
+
+    if (await searchInput.count() > 0) {
+      const input = searchInput.first();
+
+      // Focus the input
+      await input.click();
+
+      // Type characters one by one and verify input retains value
+      await input.fill('');
+      await input.type('a');
+      await page.waitForTimeout(100);
+      expect(await input.inputValue()).toBe('a');
+
+      await input.type('b');
+      await page.waitForTimeout(100);
+      expect(await input.inputValue()).toBe('ab');
+
+      await input.type('c');
+      await page.waitForTimeout(100);
+      expect(await input.inputValue()).toBe('abc');
+    }
+  });
+
+  test('should clear search when clear button is clicked', async ({ page }) => {
+    const searchInput = page.locator('input[placeholder*="Search books"]').or(page.locator('input[placeholder*="البحث في الكتب"]'));
+
+    if (await searchInput.count() > 0) {
+      const input = searchInput.first();
+
+      // Type in search
+      await input.fill('test');
+      await page.waitForTimeout(300);
+
+      // Find and click clear button (it should appear when there's text)
+      const clearButton = page.locator('button').filter({ has: page.locator('svg path[d*="M18 6L6 18"]') });
+
+      if (await clearButton.count() > 0) {
+        await clearButton.first().click();
+        await page.waitForTimeout(300);
+
+        // Search should be cleared
+        expect(await input.inputValue()).toBe('');
+      }
+    }
+  });
+
+  test.afterEach(async ({ page }) => {
+    // Clean up test data
+    await page.evaluate(async () => {
+      const dbs = await indexedDB.databases();
+      for (const db of dbs) {
+        if (db.name === 'hadithHub') {
+          indexedDB.deleteDatabase(db.name);
+        }
+      }
+    });
+  });
+});
