@@ -273,6 +273,8 @@ const translations = {
     searching: 'Searching...',
     showAllResults: 'Show all',
     hideResults: 'Hide',
+    tooManyResults: 'Too many results. Please refine your search.',
+    showingTopResults: 'Showing top 50 results per book',
     page: 'Page',
     backToResults: 'Back to Results',
     searchMode: 'Match Type',
@@ -414,6 +416,8 @@ const translations = {
     searching: 'جاري البحث...',
     showAllResults: 'عرض الكل',
     hideResults: 'إخفاء',
+    tooManyResults: 'نتائج كثيرة جداً. يرجى تحسين البحث.',
+    showingTopResults: 'عرض أفضل 50 نتيجة لكل كتاب',
     page: 'صفحة',
     backToResults: 'العودة للنتائج',
     searchMode: 'نوع المطابقة',
@@ -2188,7 +2192,7 @@ function App() {
           background: isHeader ? 'rgba(255,255,255,0.1)' : 'var(--card)',
           borderRadius: '12px',
           padding: isHeader ? '10px 12px' : '12px 16px',
-          margin: isHeader ? '12px 0 0' : '0 16px 16px',
+          margin: isHeader ? '12px 0 0' : '8px 16px 16px',
           gap: '8px',
           boxShadow: isHeader ? 'none' : 'var(--shadow)',
           flexShrink: 0,
@@ -4739,21 +4743,31 @@ function App() {
 
   // Search Results View
   if (view === 'searchResults') {
-    // Group results by book
+    const MAX_RESULTS_PER_BOOK = 50;
+    const TOO_MANY_RESULTS_THRESHOLD = 500;
+    const hasTooManyResults = searchResults.length > TOO_MANY_RESULTS_THRESHOLD;
+
+    // Group results by book, limiting to top 50 per book
     const groupedResults = searchResults.reduce((acc, result) => {
       if (!acc[result.bookId]) {
         acc[result.bookId] = {
           bookId: result.bookId,
           bookTitle: result.bookTitle,
           results: [],
+          totalCount: 0,
         };
       }
-      acc[result.bookId].results.push(result);
+      acc[result.bookId].totalCount++;
+      // Only keep first 50 results per book
+      if (acc[result.bookId].results.length < MAX_RESULTS_PER_BOOK) {
+        acc[result.bookId].results.push(result);
+      }
       return acc;
-    }, {} as Record<string, { bookId: string; bookTitle: string; results: SearchResult[] }>);
+    }, {} as Record<string, { bookId: string; bookTitle: string; results: SearchResult[]; totalCount: number }>);
 
-    const bookGroups = Object.values(groupedResults).sort((a, b) => b.results.length - a.results.length);
+    const bookGroups = Object.values(groupedResults).sort((a, b) => b.totalCount - a.totalCount);
     const totalBooks = bookGroups.length;
+    const hasLimitedResults = bookGroups.some(g => g.totalCount > MAX_RESULTS_PER_BOOK);
 
     // Toggle book expansion
     const toggleBookExpansion = (bookId: string) => {
@@ -4877,6 +4891,52 @@ function App() {
                   </div>
                 </div>
 
+                {/* Warning for too many results */}
+                {hasTooManyResults && (
+                  <div style={{
+                    padding: '12px 16px',
+                    marginBottom: '16px',
+                    background: 'var(--accent-amber-light)',
+                    border: '1px solid var(--accent-amber)',
+                    borderRadius: '8px',
+                    color: 'var(--accent-amber-dark)',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    {t.tooManyResults}
+                  </div>
+                )}
+
+                {/* Info about limited results per book */}
+                {hasLimitedResults && (
+                  <div style={{
+                    padding: '10px 16px',
+                    marginBottom: '16px',
+                    background: 'var(--primary-50)',
+                    border: '1px solid var(--primary)',
+                    borderRadius: '8px',
+                    color: 'var(--primary)',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="16" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    {t.showingTopResults}
+                  </div>
+                )}
+
                 {/* Pagination for book groups */}
                 {totalGroupPages > 1 && (
                   <div style={{
@@ -4977,7 +5037,9 @@ function App() {
                               fontSize: '0.8rem',
                               fontWeight: 600,
                             }}>
-                              {group.results.length} {t.resultsFound}
+                              {group.totalCount > group.results.length
+                                ? `${group.results.length}/${group.totalCount}`
+                                : group.results.length} {t.resultsFound}
                             </span>
                             <svg
                               width="16"
@@ -5174,6 +5236,52 @@ function App() {
                 </div>
               </div>
 
+              {/* Warning for too many results */}
+              {hasTooManyResults && (
+                <div style={{
+                  padding: '10px 12px',
+                  marginBottom: '12px',
+                  background: 'var(--accent-amber-light)',
+                  border: '1px solid var(--accent-amber)',
+                  borderRadius: '8px',
+                  color: 'var(--accent-amber-dark)',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  {t.tooManyResults}
+                </div>
+              )}
+
+              {/* Info about limited results per book */}
+              {hasLimitedResults && (
+                <div style={{
+                  padding: '8px 12px',
+                  marginBottom: '12px',
+                  background: 'var(--primary-50)',
+                  border: '1px solid var(--primary)',
+                  borderRadius: '8px',
+                  color: 'var(--primary)',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  {t.showingTopResults}
+                </div>
+              )}
+
               {/* Pagination for book groups */}
               {totalGroupPages > 1 && (
                 <div style={{
@@ -5281,7 +5389,9 @@ function App() {
                           fontSize: '0.75rem',
                           fontWeight: 600,
                         }}>
-                          {group.results.length}
+                          {group.totalCount > group.results.length
+                            ? `${group.results.length}/${group.totalCount}`
+                            : group.results.length}
                         </span>
                         <svg
                           width="14"

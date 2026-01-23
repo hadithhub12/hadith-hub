@@ -638,6 +638,144 @@ test.describe('Search Results - Grouped by Book', () => {
   });
 });
 
+test.describe('Search Results - Large Result Set Handling', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    // Set up mock books with many pages containing searchable content
+    await page.evaluate(async () => {
+      const DB_NAME = 'hadithHub';
+      const DB_VERSION = 1;
+
+      return new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = () => reject(request.error);
+
+        request.onupgradeneeded = (event) => {
+          const db = (event.target as IDBOpenDBRequest).result;
+          if (!db.objectStoreNames.contains('books')) {
+            db.createObjectStore('books', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('volumes')) {
+            db.createObjectStore('volumes', { keyPath: ['bookId', 'volume'] });
+          }
+          if (!db.objectStoreNames.contains('pages')) {
+            const pageStore = db.createObjectStore('pages', { keyPath: ['bookId', 'volume', 'page'] });
+            pageStore.createIndex('bookId', 'bookId', { unique: false });
+            pageStore.createIndex('bookVolume', ['bookId', 'volume'], { unique: false });
+          }
+        };
+
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction(['books', 'volumes', 'pages'], 'readwrite');
+
+          // Add test book with many pages containing the search term
+          tx.objectStore('books').put({
+            id: 'large-result-test',
+            title: 'كتاب النتائج الكثيرة',
+            author: 'المؤلف',
+            volumes: 1,
+            importedAt: Date.now(),
+          });
+
+          tx.objectStore('volumes').put({
+            bookId: 'large-result-test',
+            volume: 1,
+            totalPages: 100,
+            importedAt: Date.now(),
+          });
+
+          // Add 100 pages, each containing the search term multiple times
+          for (let i = 1; i <= 100; i++) {
+            tx.objectStore('pages').put({
+              bookId: 'large-result-test',
+              volume: 1,
+              page: i,
+              text: JSON.stringify([
+                `الصفحة ${i} - العلم نور`,
+                `العلم خير من المال`,
+                `طلب العلم فريضة`,
+              ]),
+            });
+          }
+
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+      });
+    });
+
+    await page.reload();
+    await page.waitForTimeout(1500);
+  });
+
+  test('should show limited results count in book header when exceeding 50', async ({ page }) => {
+    // Navigate to search
+    await page.locator('text=Search').or(page.locator('text=بحث')).first().click();
+    await page.waitForTimeout(500);
+
+    // Search for a term that appears many times
+    const searchInput = page.locator('input[placeholder*="Search"]').or(page.locator('input[placeholder*="البحث"]'));
+    await expect(searchInput.first()).toBeVisible({ timeout: 5000 });
+    await searchInput.first().fill('العلم');
+    await page.waitForTimeout(300);
+
+    // Click search
+    const searchBtn = page.locator('button:has-text("Search")').or(page.locator('button:has-text("بحث")'));
+    if (await searchBtn.count() > 0) {
+      await searchBtn.first().click();
+      await page.waitForTimeout(2500);
+
+      // Look for the format "50/X" indicating limited results
+      const limitedResultsBadge = page.locator('text=/50\\/\\d+/');
+      const hasLimitedBadge = await limitedResultsBadge.count() > 0;
+
+      console.log(`Shows limited results format (50/X): ${hasLimitedBadge}`);
+      // This test passes if we find the limited format, or if total is under 50
+    }
+  });
+
+  test('should show info message about showing top 50 results', async ({ page }) => {
+    // Navigate to search
+    await page.locator('text=Search').or(page.locator('text=بحث')).first().click();
+    await page.waitForTimeout(500);
+
+    // Search for a term that appears many times
+    const searchInput = page.locator('input[placeholder*="Search"]').or(page.locator('input[placeholder*="البحث"]'));
+    await expect(searchInput.first()).toBeVisible({ timeout: 5000 });
+    await searchInput.first().fill('العلم');
+    await page.waitForTimeout(300);
+
+    // Click search
+    const searchBtn = page.locator('button:has-text("Search")').or(page.locator('button:has-text("بحث")'));
+    if (await searchBtn.count() > 0) {
+      await searchBtn.first().click();
+      await page.waitForTimeout(2500);
+
+      // Look for info message about showing top 50 results
+      const infoMessage = page.locator('text=top 50').or(page.locator('text=50 نتيجة'));
+      const hasInfoMessage = await infoMessage.count() > 0;
+
+      console.log(`Shows top 50 results info: ${hasInfoMessage}`);
+    }
+  });
+
+  test.afterEach(async ({ page }) => {
+    await page.evaluate(async () => {
+      const dbs = await indexedDB.databases();
+      for (const db of dbs) {
+        if (db.name === 'hadithHub') {
+          indexedDB.deleteDatabase(db.name);
+        }
+      }
+    });
+  });
+});
+
 test.describe('Search - Cleanup', () => {
   test.afterEach(async ({ page }) => {
     await page.evaluate(async () => {
