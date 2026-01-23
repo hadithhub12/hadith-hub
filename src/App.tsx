@@ -2118,10 +2118,16 @@ function App() {
     if (!homeBookSearch.trim()) return displayBooks;
     const searchLower = homeBookSearch.toLowerCase();
     return displayBooks.filter(book => {
-      const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title, author: book.author || '' };
-      return displayInfo.title.toLowerCase().includes(searchLower) ||
-             (displayInfo.author && displayInfo.author.toLowerCase().includes(searchLower)) ||
-             book.title.toLowerCase().includes(searchLower);
+      try {
+        const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title || '', author: book.author || '' };
+        const titleMatch = (displayInfo.title || '').toLowerCase().includes(searchLower);
+        const authorMatch = displayInfo.author && displayInfo.author.toLowerCase().includes(searchLower);
+        const rawTitleMatch = (book.title || '').toLowerCase().includes(searchLower);
+        return titleMatch || authorMatch || rawTitleMatch;
+      } catch {
+        // Skip books that cause errors during filtering
+        return false;
+      }
     });
   }, [displayBooks, homeBookSearch, language]);
 
