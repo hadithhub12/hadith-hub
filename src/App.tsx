@@ -1294,7 +1294,6 @@ function App() {
   const [bulkDownloadProgress, setBulkDownloadProgress] = useState<{ current: number; total: number; booksCompleted: number } | null>(null);
   // Search pagination and grouping
   const [searchResultsPage, setSearchResultsPage] = useState(1);
-  const RESULTS_PER_PAGE = 20;
   const [expandedSearchBooks, setExpandedSearchBooks] = useState<Set<string>>(new Set());
   // Home page pagination
   const [homeShiaPage, setHomeShiaPage] = useState(1);
@@ -4786,70 +4785,7 @@ function App() {
     const groupEndIndex = Math.min(groupStartIndex + GROUPS_PER_PAGE, bookGroups.length);
     const paginatedGroups = bookGroups.slice(groupStartIndex, groupEndIndex);
 
-    // Legacy pagination calculations (keeping for backwards compatibility)
-    const totalResultsPages = Math.ceil(searchResults.length / RESULTS_PER_PAGE);
-    const startIndex = (searchResultsPage - 1) * RESULTS_PER_PAGE;
-    const endIndex = Math.min(startIndex + RESULTS_PER_PAGE, searchResults.length);
-    const paginatedResults = searchResults.slice(startIndex, endIndex);
     const searchResultsBooksCount = books.filter(b => !b.id.endsWith('_en')).length;
-
-    // Pagination controls component
-    const ResultsPagination = ({ variant = 'top' }: { variant?: 'top' | 'bottom' }) => {
-      if (totalResultsPages <= 1) return null;
-
-      return (
-        <div style={{
-          display: 'flex',
-          justifyContent: variant === 'top' ? 'space-between' : 'center',
-          alignItems: 'center',
-          marginBottom: variant === 'top' ? '16px' : '8px',
-          marginTop: variant === 'bottom' ? '16px' : '0',
-          padding: '12px 16px',
-          background: 'var(--card)',
-          borderRadius: '12px',
-          boxShadow: 'var(--shadow-sm)',
-          gap: '8px',
-        }}>
-          <button
-            onClick={() => setSearchResultsPage(p => Math.max(1, p - 1))}
-            disabled={searchResultsPage === 1}
-            style={{
-              padding: variant === 'top' ? '8px 16px' : '10px 20px',
-              borderRadius: '8px',
-              border: 'none',
-              background: searchResultsPage === 1 ? 'var(--border)' : 'var(--primary)',
-              color: searchResultsPage === 1 ? 'var(--text-secondary)' : 'white',
-              cursor: searchResultsPage === 1 ? 'not-allowed' : 'pointer',
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              opacity: searchResultsPage === 1 ? 0.5 : 1,
-            }}
-          >
-            {variant === 'top' ? `${isRTL ? '→' : '←'} ${t.previousPage}` : (isRTL ? '→' : '←')}
-          </button>
-          <span style={{ fontSize: '0.9rem', color: variant === 'top' ? 'var(--text-secondary)' : 'var(--text)', padding: variant === 'bottom' ? '0 16px' : '0' }}>
-            {variant === 'top' ? `${t.pageOf} ${searchResultsPage} / ${totalResultsPages}` : `${searchResultsPage} / ${totalResultsPages}`}
-          </span>
-          <button
-            onClick={() => setSearchResultsPage(p => Math.min(totalResultsPages, p + 1))}
-            disabled={searchResultsPage === totalResultsPages}
-            style={{
-              padding: variant === 'top' ? '8px 16px' : '10px 20px',
-              borderRadius: '8px',
-              border: 'none',
-              background: searchResultsPage === totalResultsPages ? 'var(--border)' : 'var(--primary)',
-              color: searchResultsPage === totalResultsPages ? 'var(--text-secondary)' : 'white',
-              cursor: searchResultsPage === totalResultsPages ? 'not-allowed' : 'pointer',
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              opacity: searchResultsPage === totalResultsPages ? 0.5 : 1,
-            }}
-          >
-            {variant === 'top' ? `${t.nextPage} ${isRTL ? '←' : '→'}` : (isRTL ? '←' : '→')}
-          </button>
-        </div>
-      );
-    };
 
     // Desktop Search Results View
     if (isDesktop) {
