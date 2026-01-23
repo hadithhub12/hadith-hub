@@ -2120,9 +2120,14 @@ function App() {
     return displayBooks.filter(book => {
       try {
         const displayInfo = hasBookMetadata(book.id) ? getBookDisplayName(book.id, language) : { title: book.title || '', author: book.author || '' };
-        const titleMatch = (displayInfo.title || '').toLowerCase().includes(searchLower);
-        const authorMatch = displayInfo.author && displayInfo.author.toLowerCase().includes(searchLower);
-        const rawTitleMatch = (book.title || '').toLowerCase().includes(searchLower);
+        // Ensure title and author are strings before calling toLowerCase
+        const title = typeof displayInfo.title === 'string' ? displayInfo.title : String(displayInfo.title || '');
+        const author = typeof displayInfo.author === 'string' ? displayInfo.author : String(displayInfo.author || '');
+        const rawTitle = typeof book.title === 'string' ? book.title : String(book.title || '');
+
+        const titleMatch = title.toLowerCase().includes(searchLower);
+        const authorMatch = author.toLowerCase().includes(searchLower);
+        const rawTitleMatch = rawTitle.toLowerCase().includes(searchLower);
         return titleMatch || authorMatch || rawTitleMatch;
       } catch {
         // Skip books that cause errors during filtering
