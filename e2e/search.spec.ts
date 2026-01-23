@@ -475,28 +475,59 @@ test.describe('Search Results - Grouped by Book', () => {
     }
   });
 
-  test('should expand and collapse book results', async ({ page }) => {
+  test('should expand and collapse book results by clicking header', async ({ page }) => {
     // Navigate to search
     await page.locator('text=Search').or(page.locator('text=بحث')).first().click();
     await page.waitForTimeout(500);
 
     // Search for a term
-    const searchInput = page.locator('input[placeholder*="Search"]').or(page.locator('input[placeholder*="البحث"]'));
+    const searchInput = page.locator('input[placeholder*="Search"]').or(page.locator('input[placeholder*="البحث"]')).or(page.locator('input[placeholder*="books"]'));
     await expect(searchInput.first()).toBeVisible({ timeout: 5000 });
     await searchInput.first().fill('العلم');
     await page.waitForTimeout(300);
 
-    const searchBtn = page.locator('button:has-text("Search")').or(page.locator('button:has-text("بحث")'));
-    if (await searchBtn.count() > 0) {
-      await searchBtn.first().click();
-      await page.waitForTimeout(2000);
+    // Click the search icon button (the one inside the search input area)
+    const searchIconBtn = page.locator('button').filter({ has: page.locator('svg') }).last();
+    await searchIconBtn.click();
+    await page.waitForTimeout(2500);
 
-      // Look for expand/collapse buttons
-      const showAllBtn = page.locator('button:has-text("Show all")').or(page.locator('button:has-text("عرض الكل")'));
-      const hideBtn = page.locator('button:has-text("Hide")').or(page.locator('button:has-text("إخفاء")'));
+    // Check if we got results (look for "results found" or book group headers)
+    const resultsText = page.locator('text=results found').or(page.locator('text=نتيجة'));
+    const hasResults = await resultsText.count() > 0;
+    console.log(`Search returned results: ${hasResults}`);
 
-      const hasExpandCollapse = (await showAllBtn.count() > 0) || (await hideBtn.count() > 0);
-      console.log(`Expand/collapse buttons present: ${hasExpandCollapse}`);
+    if (hasResults) {
+      // By default, book results should be collapsed (no Volume/Page text visible)
+      const volumePageText = page.locator('text=Vol.').or(page.locator('text=Volume').or(page.locator('text=المجلد')));
+      const initialCount = await volumePageText.count();
+      console.log(`Initial volume/page items visible: ${initialCount}`);
+      expect(initialCount).toBe(0);
+
+      // Find book header - it's a clickable button in the results area containing a book title
+      // Look for buttons that have book-related content (book icon SVG and Arabic text)
+      const bookHeaderBtns = page.locator('main button').filter({ hasText: /بحار|الكافي|كتاب/ });
+
+      if (await bookHeaderBtns.count() > 0) {
+        const bookHeaderBtn = bookHeaderBtns.first();
+
+        // Click to expand
+        await bookHeaderBtn.click();
+        await page.waitForTimeout(500);
+
+        // After expanding, results should be visible
+        const expandedCount = await volumePageText.count();
+        console.log(`After expand, volume/page items visible: ${expandedCount}`);
+        expect(expandedCount).toBeGreaterThan(initialCount);
+
+        // Click the same header again to collapse
+        await bookHeaderBtn.click();
+        await page.waitForTimeout(500);
+
+        // Results should be hidden again
+        const collapsedCount = await volumePageText.count();
+        console.log(`After collapse, volume/page items visible: ${collapsedCount}`);
+        expect(collapsedCount).toBe(0);
+      }
     }
   });
 
@@ -524,6 +555,39 @@ test.describe('Search Results - Grouped by Book', () => {
     }
   });
 
+  test('should start with all book groups collapsed', async ({ page }) => {
+    // Navigate to search
+    await page.locator('text=Search').or(page.locator('text=بحث')).first().click();
+    await page.waitForTimeout(500);
+
+    // Search for a term that appears in multiple books
+    const searchInput = page.locator('input[placeholder*="Search"]').or(page.locator('input[placeholder*="البحث"]'));
+    await expect(searchInput.first()).toBeVisible({ timeout: 5000 });
+    await searchInput.first().fill('العلم');
+    await page.waitForTimeout(300);
+
+    const searchBtn = page.locator('button:has-text("Search")').or(page.locator('button:has-text("بحث")'));
+    if (await searchBtn.count() > 0) {
+      await searchBtn.first().click();
+      await page.waitForTimeout(2000);
+
+      // Verify we have book groups (headers with book icons)
+      const bookHeaders = page.locator('button').filter({ has: page.locator('svg') });
+      const headerCount = await bookHeaders.count();
+      expect(headerCount).toBeGreaterThan(0);
+      console.log(`Found ${headerCount} book group headers`);
+
+      // By default, no individual result items should be visible (only headers)
+      // Results contain Volume/Page info that is not in headers
+      const resultItems = page.locator('text=/Volume \\d+ • Page \\d+/').or(page.locator('text=/المجلد \\d+ • الصفحة \\d+/'));
+      const visibleResults = await resultItems.count();
+      console.log(`Visible result items while collapsed: ${visibleResults}`);
+
+      // Expect no results visible when all groups are collapsed
+      expect(visibleResults).toBe(0);
+    }
+  });
+
   test('should navigate to page when clicking a result', async ({ page }) => {
     // Navigate to search
     await page.locator('text=Search').or(page.locator('text=بحث')).first().click();
@@ -540,17 +604,24 @@ test.describe('Search Results - Grouped by Book', () => {
       await searchBtn.first().click();
       await page.waitForTimeout(2000);
 
-      // Click on a result item (look for volume/page indicator)
-      const resultItem = page.locator('text=Volume').or(page.locator('text=المجلد')).first();
-      if (await resultItem.count() > 0) {
-        await resultItem.click();
-        await page.waitForTimeout(1000);
+      // First, expand a book group by clicking its header
+      const bookHeader = page.locator('button').filter({ has: page.locator('svg') }).first();
+      if (await bookHeader.count() > 0) {
+        await bookHeader.click();
+        await page.waitForTimeout(500);
 
-        // Should navigate to reader view
-        const readerContent = page.locator('[style*="direction: rtl"]');
-        const isInReader = await readerContent.count() > 0;
+        // Now click on a result item (look for volume/page indicator)
+        const resultItem = page.locator('text=Volume').or(page.locator('text=المجلد')).first();
+        if (await resultItem.count() > 0) {
+          await resultItem.click();
+          await page.waitForTimeout(1000);
 
-        console.log(`Navigated to reader: ${isInReader}`);
+          // Should navigate to reader view
+          const readerContent = page.locator('[style*="direction: rtl"]');
+          const isInReader = await readerContent.count() > 0;
+
+          console.log(`Navigated to reader: ${isInReader}`);
+        }
       }
     }
   });

@@ -4997,7 +4997,6 @@ function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {paginatedGroups.map((group) => {
                     const isExpanded = expandedSearchBooks.has(group.bookId);
-                    const displayResults = isExpanded ? group.results : group.results.slice(0, 3);
 
                     return (
                       <div
@@ -5009,7 +5008,7 @@ function App() {
                           overflow: 'hidden',
                         }}
                       >
-                        {/* Book header */}
+                        {/* Book header - clickable to expand/collapse */}
                         <button
                           onClick={() => toggleBookExpansion(group.bookId)}
                           style={{
@@ -5061,75 +5060,50 @@ function App() {
                           </div>
                         </button>
 
-                        {/* Results list */}
-                        <div style={{ padding: '12px 20px' }}>
-                          {displayResults.map((result, idx) => (
-                            <div
-                              key={`${result.bookId}-${result.volume}-${result.page}-${result.matchIndex}`}
-                              style={{
-                                padding: '12px 0',
-                                borderBottom: idx < displayResults.length - 1 ? '1px solid var(--border-light)' : 'none',
-                                cursor: 'pointer',
-                              }}
-                              onClick={() => goToSearchResult(result)}
-                            >
-                              <div style={{
-                                fontSize: '0.8rem',
-                                color: 'var(--text-secondary)',
-                                marginBottom: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                              }}>
-                                <span style={{ background: 'var(--border-light)', padding: '2px 8px', borderRadius: '4px' }}>
-                                  {t.volume} {result.volume} • {t.page} {result.page}
-                                </span>
-                              </div>
+                        {/* Results list - only shown when expanded */}
+                        {isExpanded && (
+                          <div style={{ padding: '12px 20px' }}>
+                            {group.results.map((result, idx) => (
                               <div
+                                key={`${result.bookId}-${result.volume}-${result.page}-${result.matchIndex}`}
                                 style={{
-                                  fontFamily: arabicFontFamily,
-                                  fontSize: '1rem',
-                                  lineHeight: 1.8,
-                                  color: 'var(--text)',
-                                  textAlign: 'right',
-                                  direction: 'rtl',
+                                  padding: '12px 0',
+                                  borderBottom: idx < group.results.length - 1 ? '1px solid var(--border-light)' : 'none',
+                                  cursor: 'pointer',
                                 }}
-                                dangerouslySetInnerHTML={{
-                                  __html: result.snippet.split(savedSearchQuery).join(
-                                    `<mark style="background: #fef08a; padding: 0 2px; border-radius: 2px;">${savedSearchQuery}</mark>`
-                                  )
-                                }}
-                              />
-                            </div>
-                          ))}
-
-                          {/* Show more/less button */}
-                          {group.results.length > 3 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleBookExpansion(group.bookId);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '10px',
-                                marginTop: '8px',
-                                background: 'var(--border-light)',
-                                border: 'none',
-                                borderRadius: '8px',
-                                color: 'var(--primary)',
-                                fontSize: '0.85rem',
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {isExpanded
-                                ? `${t.hideResults} (${group.results.length - 3})`
-                                : `${t.showAllResults} (${group.results.length - 3} ${t.resultsFound})`
-                              }
-                            </button>
-                          )}
-                        </div>
+                                onClick={() => goToSearchResult(result)}
+                              >
+                                <div style={{
+                                  fontSize: '0.8rem',
+                                  color: 'var(--text-secondary)',
+                                  marginBottom: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                }}>
+                                  <span style={{ background: 'var(--border-light)', padding: '2px 8px', borderRadius: '4px' }}>
+                                    {t.volume} {result.volume} • {t.page} {result.page}
+                                  </span>
+                                </div>
+                                <div
+                                  style={{
+                                    fontFamily: arabicFontFamily,
+                                    fontSize: '1rem',
+                                    lineHeight: 1.8,
+                                    color: 'var(--text)',
+                                    textAlign: 'right',
+                                    direction: 'rtl',
+                                  }}
+                                  dangerouslySetInnerHTML={{
+                                    __html: result.snippet.split(savedSearchQuery).join(
+                                      `<mark style="background: #fef08a; padding: 0 2px; border-radius: 2px;">${savedSearchQuery}</mark>`
+                                    )
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -5319,7 +5293,6 @@ function App() {
               {/* Grouped results by book */}
               {paginatedGroups.map((group) => {
                 const isExpanded = expandedSearchBooks.has(group.bookId);
-                const displayResults = isExpanded ? group.results : group.results.slice(0, 2);
 
                 return (
                   <div
@@ -5331,7 +5304,7 @@ function App() {
                       overflow: 'hidden',
                     }}
                   >
-                    {/* Book header */}
+                    {/* Book header - clickable to expand/collapse */}
                     <button
                       onClick={() => toggleBookExpansion(group.bookId)}
                       style={{
@@ -5391,72 +5364,47 @@ function App() {
                       </div>
                     </button>
 
-                    {/* Results list */}
-                    <div style={{ padding: '8px 14px' }}>
-                      {displayResults.map((result, idx) => (
-                        <div
-                          key={`${result.bookId}-${result.volume}-${result.page}-${result.matchIndex}`}
-                          style={{
-                            padding: '10px 0',
-                            borderBottom: idx < displayResults.length - 1 ? '1px solid var(--border-light)' : 'none',
-                            cursor: 'pointer',
-                          }}
-                          onClick={() => goToSearchResult(result)}
-                        >
-                          <div style={{
-                            fontSize: '0.75rem',
-                            color: 'var(--text-secondary)',
-                            marginBottom: '4px',
-                          }}>
-                            <span style={{ background: 'var(--border-light)', padding: '2px 6px', borderRadius: '4px' }}>
-                              {t.volume} {result.volume} • {t.page} {result.page}
-                            </span>
-                          </div>
+                    {/* Results list - only shown when expanded */}
+                    {isExpanded && (
+                      <div style={{ padding: '8px 14px' }}>
+                        {group.results.map((result, idx) => (
                           <div
+                            key={`${result.bookId}-${result.volume}-${result.page}-${result.matchIndex}`}
                             style={{
-                              fontFamily: arabicFontFamily,
-                              fontSize: '0.95rem',
-                              lineHeight: 1.7,
-                              color: 'var(--text)',
-                              textAlign: 'right',
-                              direction: 'rtl',
+                              padding: '10px 0',
+                              borderBottom: idx < group.results.length - 1 ? '1px solid var(--border-light)' : 'none',
+                              cursor: 'pointer',
                             }}
-                            dangerouslySetInnerHTML={{
-                              __html: result.snippet.split(savedSearchQuery).join(
-                                `<mark style="background: #fef08a; padding: 0 2px; border-radius: 2px;">${savedSearchQuery}</mark>`
-                              )
+                            onClick={() => goToSearchResult(result)}
+                          >
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: 'var(--text-secondary)',
+                              marginBottom: '4px',
+                            }}>
+                              <span style={{ background: 'var(--border-light)', padding: '2px 6px', borderRadius: '4px' }}>
+                                {t.volume} {result.volume} • {t.page} {result.page}
+                              </span>
+                            </div>
+                            <div
+                              style={{
+                                fontFamily: arabicFontFamily,
+                                fontSize: '0.95rem',
+                                lineHeight: 1.7,
+                                color: 'var(--text)',
+                                textAlign: 'right',
+                                direction: 'rtl',
                             }}
-                          />
-                        </div>
-                      ))}
-
-                      {/* Show more/less button */}
-                      {group.results.length > 2 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleBookExpansion(group.bookId);
-                          }}
-                          style={{
-                            width: '100%',
-                            padding: '8px',
-                            marginTop: '6px',
-                            background: 'var(--border-light)',
-                            border: 'none',
-                            borderRadius: '6px',
-                            color: 'var(--primary)',
-                            fontSize: '0.8rem',
-                            fontWeight: 500,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {isExpanded
-                            ? t.hideResults
-                            : `${t.showAllResults} (+${group.results.length - 2})`
-                          }
-                        </button>
-                      )}
-                    </div>
+                              dangerouslySetInnerHTML={{
+                                __html: result.snippet.split(savedSearchQuery).join(
+                                  `<mark style="background: #fef08a; padding: 0 2px; border-radius: 2px;">${savedSearchQuery}</mark>`
+                                )
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
