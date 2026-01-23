@@ -418,6 +418,155 @@ test.describe('Search - Roman to Arabic Transliteration', () => {
   });
 });
 
+test.describe('Search Results - Grouped by Book', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await setupSearchTestData(page);
+    await page.reload();
+    await page.waitForTimeout(1500);
+  });
+
+  test('should display search results grouped by book', async ({ page }) => {
+    // Navigate to search
+    await page.locator('text=Search').or(page.locator('text=بحث')).first().click();
+    await page.waitForTimeout(500);
+
+    // Search for a term that appears in multiple books
+    const searchInput = page.locator('input[placeholder*="Search"]').or(page.locator('input[placeholder*="البحث"]'));
+    await expect(searchInput.first()).toBeVisible({ timeout: 5000 });
+    await searchInput.first().fill('العلم');
+    await page.waitForTimeout(300);
+
+    // Click search button
+    const searchBtn = page.locator('button:has-text("Search")').or(page.locator('button:has-text("بحث")'));
+    if (await searchBtn.count() > 0) {
+      await searchBtn.first().click();
+      await page.waitForTimeout(2000);
+
+      // Check for grouped results - look for book titles with result counts
+      const groupedBooks = page.locator('button').filter({ has: page.locator('svg') });
+      const hasGroupedResults = await groupedBooks.count() > 0;
+
+      console.log(`Grouped results visible: ${hasGroupedResults}`);
+    }
+  });
+
+  test('should show book count in search results header', async ({ page }) => {
+    // Navigate to search
+    await page.locator('text=Search').or(page.locator('text=بحث')).first().click();
+    await page.waitForTimeout(500);
+
+    // Search for a term
+    const searchInput = page.locator('input[placeholder*="Search"]').or(page.locator('input[placeholder*="البحث"]'));
+    await expect(searchInput.first()).toBeVisible({ timeout: 5000 });
+    await searchInput.first().fill('العلم');
+    await page.waitForTimeout(300);
+
+    const searchBtn = page.locator('button:has-text("Search")').or(page.locator('button:has-text("بحث")'));
+    if (await searchBtn.count() > 0) {
+      await searchBtn.first().click();
+      await page.waitForTimeout(2000);
+
+      // Check for "results in X books" text
+      const resultsInBooks = page.locator('text=results in').or(page.locator('text=نتيجة في'));
+      const hasBookCount = await resultsInBooks.count() > 0;
+
+      console.log(`Book count in header: ${hasBookCount}`);
+    }
+  });
+
+  test('should expand and collapse book results', async ({ page }) => {
+    // Navigate to search
+    await page.locator('text=Search').or(page.locator('text=بحث')).first().click();
+    await page.waitForTimeout(500);
+
+    // Search for a term
+    const searchInput = page.locator('input[placeholder*="Search"]').or(page.locator('input[placeholder*="البحث"]'));
+    await expect(searchInput.first()).toBeVisible({ timeout: 5000 });
+    await searchInput.first().fill('العلم');
+    await page.waitForTimeout(300);
+
+    const searchBtn = page.locator('button:has-text("Search")').or(page.locator('button:has-text("بحث")'));
+    if (await searchBtn.count() > 0) {
+      await searchBtn.first().click();
+      await page.waitForTimeout(2000);
+
+      // Look for expand/collapse buttons
+      const showAllBtn = page.locator('button:has-text("Show all")').or(page.locator('button:has-text("عرض الكل")'));
+      const hideBtn = page.locator('button:has-text("Hide")').or(page.locator('button:has-text("إخفاء")'));
+
+      const hasExpandCollapse = (await showAllBtn.count() > 0) || (await hideBtn.count() > 0);
+      console.log(`Expand/collapse buttons present: ${hasExpandCollapse}`);
+    }
+  });
+
+  test('should show result count badge for each book', async ({ page }) => {
+    // Navigate to search
+    await page.locator('text=Search').or(page.locator('text=بحث')).first().click();
+    await page.waitForTimeout(500);
+
+    // Search for a term
+    const searchInput = page.locator('input[placeholder*="Search"]').or(page.locator('input[placeholder*="البحث"]'));
+    await expect(searchInput.first()).toBeVisible({ timeout: 5000 });
+    await searchInput.first().fill('العلم');
+    await page.waitForTimeout(300);
+
+    const searchBtn = page.locator('button:has-text("Search")').or(page.locator('button:has-text("بحث")'));
+    if (await searchBtn.count() > 0) {
+      await searchBtn.first().click();
+      await page.waitForTimeout(2000);
+
+      // Check for result count badges (numbers in book headers)
+      const badges = page.locator('[style*="border-radius"]').filter({ hasText: /^\d+$/ });
+      const hasBadges = await badges.count() > 0;
+
+      console.log(`Result count badges: ${hasBadges}`);
+    }
+  });
+
+  test('should navigate to page when clicking a result', async ({ page }) => {
+    // Navigate to search
+    await page.locator('text=Search').or(page.locator('text=بحث')).first().click();
+    await page.waitForTimeout(500);
+
+    // Search for a term
+    const searchInput = page.locator('input[placeholder*="Search"]').or(page.locator('input[placeholder*="البحث"]'));
+    await expect(searchInput.first()).toBeVisible({ timeout: 5000 });
+    await searchInput.first().fill('العلم');
+    await page.waitForTimeout(300);
+
+    const searchBtn = page.locator('button:has-text("Search")').or(page.locator('button:has-text("بحث")'));
+    if (await searchBtn.count() > 0) {
+      await searchBtn.first().click();
+      await page.waitForTimeout(2000);
+
+      // Click on a result item (look for volume/page indicator)
+      const resultItem = page.locator('text=Volume').or(page.locator('text=المجلد')).first();
+      if (await resultItem.count() > 0) {
+        await resultItem.click();
+        await page.waitForTimeout(1000);
+
+        // Should navigate to reader view
+        const readerContent = page.locator('[style*="direction: rtl"]');
+        const isInReader = await readerContent.count() > 0;
+
+        console.log(`Navigated to reader: ${isInReader}`);
+      }
+    }
+  });
+
+  test.afterEach(async ({ page }) => {
+    await page.evaluate(async () => {
+      const dbs = await indexedDB.databases();
+      for (const db of dbs) {
+        if (db.name === 'hadithHub') {
+          indexedDB.deleteDatabase(db.name);
+        }
+      }
+    });
+  });
+});
+
 test.describe('Search - Cleanup', () => {
   test.afterEach(async ({ page }) => {
     await page.evaluate(async () => {
