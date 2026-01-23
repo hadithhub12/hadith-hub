@@ -731,6 +731,7 @@ const styles: Record<string, CSSProperties> = {
     borderBottom: '1px solid var(--border)',
     padding: '12px 20px',
     paddingTop: 'calc(12px + env(safe-area-inset-top))',
+    flexShrink: 0,
   },
   headerHome: {
     padding: '16px 20px',
@@ -769,6 +770,7 @@ const styles: Record<string, CSSProperties> = {
     flex: 1,
     padding: '16px',
     overflow: 'auto',
+    minHeight: 0, // Required for flex item to scroll properly
   },
   card: {
     background: 'var(--card)',
@@ -910,6 +912,7 @@ const styles: Record<string, CSSProperties> = {
     paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
     background: 'var(--card)',
     borderTop: '1px solid var(--border-light)',
+    flexShrink: 0,
   },
   navBtn: {
     flex: 1,
@@ -2140,6 +2143,7 @@ function App() {
           margin: isHeader ? '12px 0 0' : '0 16px 16px',
           gap: '8px',
           boxShadow: isHeader ? 'none' : 'var(--shadow)',
+          flexShrink: 0,
         }}>
           <button
             style={{
@@ -2703,8 +2707,8 @@ function App() {
 
     // Mobile/Tablet Pagination Mode (default)
     return (
-      <div style={{ ...styles.app, direction: isRTL ? 'rtl' : 'ltr' }}>
-        <header style={{ ...styles.header, paddingBottom: '16px' }}>
+      <div style={{ ...styles.app, height: '100dvh', minHeight: 'unset', direction: isRTL ? 'rtl' : 'ltr' }}>
+        <header style={{ ...styles.header, paddingBottom: '16px', flexShrink: 0 }}>
           <div style={styles.headerInner}>
             <button style={styles.backBtn} onClick={() => {
               if (fromSearch) {
