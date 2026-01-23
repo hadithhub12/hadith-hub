@@ -1,6 +1,16 @@
-import { useState, useEffect, useRef, useMemo, type CSSProperties } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, type CSSProperties } from 'react';
 import './index.css';
 import { getBookDisplayName, hasBookMetadata } from './bookMetadata';
+// Performance optimizations (dev mode only)
+import {
+  isDev,
+  getCachedSearchResults,
+  cacheSearchResults,
+  getSearchCacheKey,
+  trackMetric,
+  logPerformanceInfo,
+  downloadParallel,
+} from './performance';
 
 // GitHub-hosted data URL (default source)
 const GITHUB_DATA_URL = 'https://raw.githubusercontent.com/hadithhub12/hadith-data/main';
@@ -1541,31 +1551,31 @@ function App() {
     setDownloadingVolumes(true);
     const downloads = importMode === 'english' ? availableTranslations : availableDownloads;
     const volumesToDownload = downloads.filter(d => selectedVolumes.has(d.volume));
-    let successCount = 0;
 
-    for (let i = 0; i < volumesToDownload.length; i++) {
-      const dl = volumesToDownload[i];
-      setDownloadProgress({ current: i + 1, total: volumesToDownload.length });
+    // Use parallel downloads in dev mode for better performance
+    const DOWNLOAD_CONCURRENCY = isDev ? 3 : 1;
 
+    // Helper to process a single download
+    const processDownload = async (dl: AvailableDownload): Promise<boolean> => {
       try {
         // Download the ZIP file (downloadUrl may be absolute for GitHub or relative for custom server)
         const downloadUrl = dl.downloadUrl.startsWith('http') ? dl.downloadUrl : `${serverUrl}${dl.downloadUrl}`;
-        console.log('Downloading from:', downloadUrl);
+        if (isDev) console.log('Downloading from:', downloadUrl);
         const res = await fetch(downloadUrl);
         if (!res.ok) {
           console.error('Download failed:', res.status, res.statusText);
-          continue;
+          return false;
         }
 
         const blob = await res.blob();
-        console.log('Downloaded blob size:', blob.size);
+        if (isDev) console.log('Downloaded blob size:', blob.size);
 
         // Check if we got an LFS pointer instead of actual file
         if (blob.size < 200) {
           const text = await blob.text();
           if (text.includes('version https://git-lfs.github.com')) {
             console.error('Got LFS pointer instead of actual file. URL needs to use media.githubusercontent.com');
-            continue;
+            return false;
           }
         }
 
@@ -1575,7 +1585,7 @@ function App() {
         const manifestFile = zip.file('manifest.json');
         if (!manifestFile) {
           console.error('No manifest.json found in ZIP');
-          continue;
+          return false;
         }
 
         const manifest = JSON.parse(await manifestFile.async('text'));
@@ -1613,21 +1623,32 @@ function App() {
         if (existingBook) {
           existingBook.volumes = Math.max(existingBook.volumes, maxVolume);
           await saveBookToDB(existingBook);
-          console.log('Updated existing book:', existingBook.id, existingBook.title);
+          if (isDev) console.log('Updated existing book:', existingBook.id, existingBook.title);
         } else {
           const newBook = { id: manifest.id, title: manifest.title, author: manifest.author, volumes: maxVolume, importedAt: Date.now() };
           booksStore.push(newBook);
           await saveBookToDB(newBook);
-          console.log('Saved new book:', newBook.id, newBook.title);
+          if (isDev) console.log('Saved new book:', newBook.id, newBook.title);
         }
 
-        successCount++;
+        return true;
       } catch (err) {
         console.error(`Failed to download volume ${dl.volume}:`, err);
+        return false;
       }
-    }
+    };
 
-    console.log('Download complete. booksStore now has:', booksStore.length, 'books');
+    // Download in parallel with concurrency limit
+    const results = await downloadParallel(
+      volumesToDownload,
+      processDownload,
+      DOWNLOAD_CONCURRENCY,
+      (completed, total) => setDownloadProgress({ current: completed, total })
+    );
+
+    const successCount = results.filter(r => r === true).length;
+
+    if (isDev) console.log('Download complete. booksStore now has:', booksStore.length, 'books');
     setBooks([...booksStore]);
     setSelectedVolumes(new Set());
     setDataVersion(v => v + 1); // Trigger re-render to update translation availability
@@ -1661,96 +1682,117 @@ function App() {
 
     setBulkDownloadProgress({ current: 0, total: totalVolumes, booksCompleted: 0 });
 
-    for (const book of booksToDownload) {
-      for (const dl of book.downloads) {
-        try {
-          // Download the ZIP file (downloadUrl may be absolute for GitHub or relative for custom server)
-          const downloadUrl = dl.downloadUrl.startsWith('http') ? dl.downloadUrl : `${serverUrl}${dl.downloadUrl}`;
-          console.log('Bulk download from:', downloadUrl);
-          const res = await fetch(downloadUrl);
-          if (!res.ok) {
-            console.error('Bulk download failed:', res.status, res.statusText);
-            completedVolumes++;
-            setBulkDownloadProgress({ current: completedVolumes, total: totalVolumes, booksCompleted });
-            continue;
-          }
+    // Use parallel downloads in dev mode (within each book)
+    const DOWNLOAD_CONCURRENCY = isDev ? 3 : 1;
 
-          const blob = await res.blob();
-          console.log('Bulk downloaded blob size:', blob.size);
-
-          // Check if we got an LFS pointer instead of actual file
-          if (blob.size < 200) {
-            const text = await blob.text();
-            if (text.includes('version https://git-lfs.github.com')) {
-              console.error('Got LFS pointer instead of actual file. URL needs to use media.githubusercontent.com');
-              completedVolumes++;
-              setBulkDownloadProgress({ current: completedVolumes, total: totalVolumes, booksCompleted });
-              continue;
-            }
-          }
-
-          const JSZip = (await import('jszip')).default;
-          const zip = await JSZip.loadAsync(blob);
-
-          const manifestFile = zip.file('manifest.json');
-          if (!manifestFile) {
-            console.error('No manifest.json found in ZIP');
-            completedVolumes++;
-            setBulkDownloadProgress({ current: completedVolumes, total: totalVolumes, booksCompleted });
-            continue;
-          }
-
-          const manifest = JSON.parse(await manifestFile.async('text'));
-
-          // Import pages
-          for (const volInfo of manifest.volumes) {
-            // Convert volume to number (manifest may have string like "001")
-            const volumeNum = typeof volInfo.volume === 'string' ? parseInt(volInfo.volume, 10) : volInfo.volume;
-            const pages: Page[] = [];
-            for (let p = 1; p <= volInfo.totalPages; p++) {
-              const pageFile = zip.file(`volumes/${volInfo.volume}/${p}.txt`);
-              if (pageFile) {
-                const text = await pageFile.async('text');
-                pages.push({ bookId: manifest.id, volume: volumeNum, page: p, text });
-              }
-            }
-            // Remove existing pages for this volume from memory
-            pagesStore = pagesStore.filter(pg => !(pg.bookId === manifest.id && pg.volume === volumeNum));
-            pagesStore = [...pagesStore, ...pages];
-
-            // Remove existing pages from IndexedDB and save new ones
-            await deletePagesFromDB(manifest.id, volumeNum);
-            await savePagesToDB(pages);
-
-            // Update volumes store
-            volumesStore = volumesStore.filter(v => !(v.bookId === manifest.id && v.volume === volumeNum));
-            const newVolume = { bookId: manifest.id, volume: volumeNum, totalPages: volInfo.totalPages, importedAt: Date.now() };
-            volumesStore.push(newVolume);
-            await saveVolumeToDB(newVolume);
-          }
-
-          // Add/update book
-          const maxVolume = Math.max(...manifest.volumes.map((v: { volume: number | string }) => typeof v.volume === 'string' ? parseInt(v.volume, 10) : v.volume));
-          const existingBook = booksStore.find(b => b.id === manifest.id);
-          if (existingBook) {
-            existingBook.volumes = Math.max(existingBook.volumes, maxVolume);
-            await saveBookToDB(existingBook);
-          } else {
-            const newBook = { id: manifest.id, title: manifest.title, author: manifest.author, volumes: maxVolume, importedAt: Date.now() };
-            booksStore.push(newBook);
-            await saveBookToDB(newBook);
-          }
-
-          completedVolumes++;
-          setBulkDownloadProgress({ current: completedVolumes, total: totalVolumes, booksCompleted });
-        } catch (err) {
-          console.error(`Failed to download volume ${dl.volume} of ${book.bookTitle}:`, err);
-          completedVolumes++;
-          setBulkDownloadProgress({ current: completedVolumes, total: totalVolumes, booksCompleted });
+    // Helper to process a single volume download
+    const processVolumeDownload = async (dl: AvailableDownload): Promise<boolean> => {
+      try {
+        // Download the ZIP file (downloadUrl may be absolute for GitHub or relative for custom server)
+        const downloadUrl = dl.downloadUrl.startsWith('http') ? dl.downloadUrl : `${serverUrl}${dl.downloadUrl}`;
+        if (isDev) console.log('Bulk download from:', downloadUrl);
+        const res = await fetch(downloadUrl);
+        if (!res.ok) {
+          console.error('Bulk download failed:', res.status, res.statusText);
+          return false;
         }
+
+        const blob = await res.blob();
+        if (isDev) console.log('Bulk downloaded blob size:', blob.size);
+
+        // Check if we got an LFS pointer instead of actual file
+        if (blob.size < 200) {
+          const text = await blob.text();
+          if (text.includes('version https://git-lfs.github.com')) {
+            console.error('Got LFS pointer instead of actual file. URL needs to use media.githubusercontent.com');
+            return false;
+          }
+        }
+
+        const JSZip = (await import('jszip')).default;
+        const zip = await JSZip.loadAsync(blob);
+
+        const manifestFile = zip.file('manifest.json');
+        if (!manifestFile) {
+          console.error('No manifest.json found in ZIP');
+          return false;
+        }
+
+        const manifest = JSON.parse(await manifestFile.async('text'));
+
+        // Import pages
+        for (const volInfo of manifest.volumes) {
+          // Convert volume to number (manifest may have string like "001")
+          const volumeNum = typeof volInfo.volume === 'string' ? parseInt(volInfo.volume, 10) : volInfo.volume;
+          const pages: Page[] = [];
+          for (let p = 1; p <= volInfo.totalPages; p++) {
+            const pageFile = zip.file(`volumes/${volInfo.volume}/${p}.txt`);
+            if (pageFile) {
+              const text = await pageFile.async('text');
+              pages.push({ bookId: manifest.id, volume: volumeNum, page: p, text });
+            }
+          }
+          // Remove existing pages for this volume from memory
+          pagesStore = pagesStore.filter(pg => !(pg.bookId === manifest.id && pg.volume === volumeNum));
+          pagesStore = [...pagesStore, ...pages];
+
+          // Remove existing pages from IndexedDB and save new ones
+          await deletePagesFromDB(manifest.id, volumeNum);
+          await savePagesToDB(pages);
+
+          // Update volumes store
+          volumesStore = volumesStore.filter(v => !(v.bookId === manifest.id && v.volume === volumeNum));
+          const newVolume = { bookId: manifest.id, volume: volumeNum, totalPages: volInfo.totalPages, importedAt: Date.now() };
+          volumesStore.push(newVolume);
+          await saveVolumeToDB(newVolume);
+        }
+
+        // Add/update book
+        const maxVolume = Math.max(...manifest.volumes.map((v: { volume: number | string }) => typeof v.volume === 'string' ? parseInt(v.volume, 10) : v.volume));
+        const existingBook = booksStore.find(b => b.id === manifest.id);
+        if (existingBook) {
+          existingBook.volumes = Math.max(existingBook.volumes, maxVolume);
+          await saveBookToDB(existingBook);
+        } else {
+          const newBook = { id: manifest.id, title: manifest.title, author: manifest.author, volumes: maxVolume, importedAt: Date.now() };
+          booksStore.push(newBook);
+          await saveBookToDB(newBook);
+        }
+
+        return true;
+      } catch (err) {
+        console.error(`Failed to download volume ${dl.volume}:`, err);
+        return false;
       }
+    };
+
+    // Process each book's volumes with parallel downloads
+    for (const book of booksToDownload) {
+      const results = await downloadParallel(
+        book.downloads,
+        processVolumeDownload,
+        DOWNLOAD_CONCURRENCY,
+        (completed) => {
+          setBulkDownloadProgress({
+            current: completedVolumes + completed,
+            total: totalVolumes,
+            booksCompleted
+          });
+        }
+      );
+
+      completedVolumes += book.downloads.length;
       booksCompleted++;
       setBulkDownloadProgress({ current: completedVolumes, total: totalVolumes, booksCompleted });
+
+      if (isDev) {
+        const successCount = results.filter(r => r === true).length;
+        logPerformanceInfo('Book volumes downloaded', {
+          book: book.bookTitle,
+          successful: successCount,
+          total: book.downloads.length
+        });
+      }
     }
 
     setBooks([...booksStore]);
@@ -1824,14 +1866,15 @@ function App() {
     }
   }
 
-  function handleBookSelect(book: Book) {
+  // Memoized handlers for performance (dev mode only)
+  const handleBookSelect = useCallback((book: Book) => {
     setSelectedBook(book);
     const vols = volumesStore.filter(v => v.bookId === book.id);
     setVolumes(vols);
     setView('library');
-  }
+  }, []);
 
-  async function handleDeleteBook(book: Book) {
+  const handleDeleteBook = useCallback(async (book: Book) => {
     if (!confirm(t.deleteBookConfirm)) return;
 
     // Also delete any associated translation book
@@ -1853,6 +1896,15 @@ function App() {
     setDataVersion(v => v + 1);
     setView('home');
     showToast(t.bookDeleted);
+  }, [t.deleteBookConfirm, t.bookDeleted]);
+
+  function loadPage(bookId: string, volume: number, page: number) {
+    const p = pagesStore.find(pg => pg.bookId === bookId && pg.volume === volume && pg.page === page);
+    if (p?.text) {
+      setPageText(formatPageText(p.text));
+    } else {
+      setPageText(t.pageNotAvailable);
+    }
   }
 
   function handleVolumeSelect(vol: number) {
@@ -1867,15 +1919,6 @@ function App() {
     }
   }
 
-  function loadPage(bookId: string, volume: number, page: number) {
-    const p = pagesStore.find(pg => pg.bookId === bookId && pg.volume === volume && pg.page === page);
-    if (p?.text) {
-      setPageText(formatPageText(p.text));
-    } else {
-      setPageText(t.pageNotAvailable);
-    }
-  }
-
   function goToPage(page: number) {
     if (!selectedBook || !selectedVolume) return;
     setCurrentPage(page);
@@ -1885,18 +1928,34 @@ function App() {
   function performSearch(query: string) {
     if (!query.trim()) return;
 
+    const startTime = performance.now();
     setIsSearching(true);
     setSavedSearchQuery(query);
     setSearchResultsPage(1); // Reset to first page
 
-    // Search in all pages
-    const results: SearchResult[] = [];
     let searchTerm = query.trim();
 
     // Convert Roman to Arabic if in roman input mode
     if (inputMode === 'roman') {
       searchTerm = romanToArabic(searchTerm);
     }
+
+    // Check cache first (dev mode optimization)
+    const cacheKey = getSearchCacheKey(searchTerm, searchMode, searchSectFilter, searchSelectedBooks);
+    const cachedResults = getCachedSearchResults<SearchResult>(cacheKey);
+
+    if (cachedResults) {
+      setSearchResults(cachedResults);
+      setIsSearching(false);
+      setView('searchResults');
+      if (isDev) {
+        logPerformanceInfo('Search from cache', { query: searchTerm, results: cachedResults.length });
+      }
+      return;
+    }
+
+    // Search in all pages
+    const results: SearchResult[] = [];
 
     // Normalize search term for root matching
     const normalizedSearchTerm = searchMode === 'root' ? normalizeArabic(searchTerm) : searchTerm;
@@ -1964,6 +2023,23 @@ function App() {
       }
     }
 
+    // Cache results for future searches (dev mode optimization)
+    cacheSearchResults(cacheKey, results);
+
+    // Track search performance
+    const duration = performance.now() - startTime;
+    trackMetric('searchDuration', duration);
+
+    if (isDev) {
+      logPerformanceInfo('Search completed', {
+        query: searchTerm,
+        mode: searchMode,
+        pagesSearched: filteredPages.length,
+        results: results.length,
+        duration: `${duration.toFixed(2)}ms`,
+      });
+    }
+
     setSearchResults(results);
     setIsSearching(false);
     setView('searchResults');
@@ -2016,6 +2092,11 @@ function App() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, currentPage, selectedVolume, showTranslation, hasTranslationForVolume, selectedBook, translationBookId, dataVersion]);
+
+  // Memoized book categorization for Home view (must be before any early returns)
+  const displayBooks = useMemo(() => books.filter(b => !b.id.endsWith('_en')), [books]);
+  const shiaBooks = useMemo(() => displayBooks.filter(b => getBookSect(b.id) === 'shia'), [displayBooks]);
+  const sunniBooks = useMemo(() => displayBooks.filter(b => getBookSect(b.id) === 'sunni'), [displayBooks]);
 
   // Reader View
   if (view === 'reader' && selectedBook && selectedVolume) {
@@ -5647,10 +5728,6 @@ function App() {
   }
 
   // Home View
-  // Categorize books by sect
-  const displayBooks = books.filter(b => !b.id.endsWith('_en'));
-  const shiaBooks = displayBooks.filter(b => getBookSect(b.id) === 'shia');
-  const sunniBooks = displayBooks.filter(b => getBookSect(b.id) === 'sunni');
 
   // Desktop layout wrapper
   if (isDesktop) {
